@@ -1,0 +1,124 @@
+/********* Imports *********/
+@import url('https://fonts.googleapis.com/css2?family=IBM+Plex+Serif:ital,wght@0,100;0,200;0,300;0,400;0,500;0,600;0,700;1,100;1,200;1,300;1,400;1,500;1,600;1,700&family=Source+Sans+Pro:ital,wght@0,200;0,300;0,400;0,600;0,700;0,900;1,200;1,300;1,400;1,600;1,700;1,900&display=swap');
+/********* Main Content *********/
+ 
+ body {
+   background: #1A1D1E;
+   color: #E3F4FB;
+   font-family: 'Source Sans Pro', sans-serif;
+  }
+h1 {
+	 font-family: 'IBM Plex Serif', serif;
+	 font-size:22pt;
+	 color: #E3F4FB;
+	 font-weight: 600;
+	 letter-spacing: 0.025em;
+}
+h2 {
+	 font-family: 'IBM Plex Serif', serif;
+	 font-size:20pt;
+	 color: #E3F4FB;
+	 font-weight: 500;
+	 letter-spacing: 0.025em;
+}
+h3 {
+	 font-size:18pt;
+	 font-weight: 500;
+}
+h4 {
+	 font-size:16pt;
+}
+p {
+	 font-size:14pt;
+}
+a {
+	 color: #DDC7FF;
+	 text-decoration: none;
+}
+a:hover {
+	 color: #CDADFF;
+}
+hr {
+	border-top: 1px solid rgba(124, 171, 189,.75);
+}
+pre {
+   background: #424c50 !important;
+   border: none;
+   color: #E3F4FB;
+}
+.btn-primary {
+	background-color: #27586B;
+	border-color: #27586B;
+	color: #E3F4FB;
+}
+.btn-primary:hover, .btn-primary:focus, .btn-primary:active, .btn-primary:after,.btn-primary.active, .open > .dropdown-toggle.btn-primary {
+	 background-color: #103E50;
+	 border-color: #103E50;
+	 color: #E3F4FB;
+}
+.btn-primary:active, .btn-primary.active, .btn-primary:focus{
+    box-shadow: 0 0 0 0.2rem rgba(39, 88, 107,.5);
+}
+.btn-secondary, btn-default {
+	background-color: #5D696E;
+	border-color: #5D696E;
+	color: #E3F4FB;
+}
+.btn-secondary:hover, .btn-secondary:focus, .btn-secondary:active, .btn-secondary:after, .btn-secondary.active, .open > .dropdown-toggle.btn-secondary , .btn-default.active, .open > .dropdown-toggle.btn-default, .open>.dropdown-toggle.btn-default:focus, .open>.dropdown-toggle.btn-default:hover{
+	 background-color: #4F5F65;
+	 border-color: #4F5F65;
+	 outline: none;
+	 color: #E3F4FB;
+}
+.tocify {
+  border: none;
+}
+.tocify-item {
+  background: #424c50;
+}
+.list-group-item.active{
+  background: #27586B !important;
+}
+.dropdown-menu {
+ background: #5D696E;
+}
+.dropdown-menu li a {
+ color: #E3F4FB;
+}
+.dropdown-menu li a:hover {
+ background-color: #4F5F65;
+ color: #E3F4FB;
+}
+img {
+ border-radius: .25em;
+ box-shadow: .25em;
+}
+
+table {
+	border-radius: .25em;
+	box-shadow: .25em;
+}
+
+.table>thead>tr>th {
+	border-bottom: #2E3132 solid 2px;
+}
+
+td {
+	border: #2E3132 solid 1px;
+}
+
+thead {
+	background-color: #27586B;
+}
+
+tr.even {
+	background-color: #424c50;
+}
+
+tr.odd {
+	background-color: #5D696E;
+}
+
+caption {
+	color: rgba(255,255,255,0.85);
+}
