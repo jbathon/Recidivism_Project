@@ -23,12 +23,12 @@ logicRegression <- function(data, model) {
   
   numTrain <- nrow(data)
   
-  trainingPredict <- predict.glm(model, newdata=trainingData, type="response")
+  trainingPredict <- predict.glm(model, newdata=data, type="response")
   
-  trainingWithPredictions <- cbind(trainingData,trainingPredict) %>% 
+  trainingWithPredictions <- cbind(data,trainingPredict) %>% 
     mutate(prediction = ifelse(trainingPredict < 0.5, "Not Heart Disease", "Heart Disease"))
   
-  trainingMatrix <- table(trainingWithPredictions$target,trainingWithPredictions$prediction)
+  trainingMatrix <- table(trainingWithPredictions$isRecid,trainingWithPredictions$prediction)
   
   error <- (trainingMatrix[1,2] + trainingMatrix[2,1])/numTrain
   
@@ -78,6 +78,11 @@ recid3 <- recid2 %>%
     daysInJail = as.numeric(difftime(jailOut,jailIn,unit="days")+1),
     logDaysInJail = log10(daysInJail),
     juvTotalCount = juvFelonyCount + juvMisdemeanerCount + juvOtherCount,
+  ) %>% 
+  select(
+    -name,
+    -dob,
+    -race
   )
 
 ## Testing Training Split
@@ -87,5 +92,61 @@ testingTraining <- createTraining(recid3)
 recidTraining <- testingTraining$training
 
 recidTesting <-  testingTraining$testing
+
+# Task 2
+
+model1 <- glm(isRecid ~ sex + age + juvTotalCount + priorsCount + logDaysInJail,data=recidTraining, family = binomial)
+
+summary(model1)
+
+numTrain <- nrow(recidTraining)
+
+recidPredict <- predict.glm(model1, newdata=recidTraining, type="response")
+
+trainingWithPredictions <- cbind(recidTraining,recidPredict) %>% 
+  mutate(prediction = ifelse(recidPredict < 0.43, "No No Reaffend", "Reaffend Uh oh"))
+
+trainingMatrix <- table(trainingWithPredictions$isRecid,trainingWithPredictions$prediction)
+
+(error <- (trainingMatrix[1,2] + trainingMatrix[2,1])/numTrain)
+
+(pHat <- (trainingMatrix[2,1]+trainingMatrix[2,2])/numTrain)
+
+(standardError <- sqrt(pHat*(1-pHat)/numTrain))
+
+(pValue <- pnorm(error,pHat,standardError))
+
+model2 <- glm(isRecid ~ sex + age + priorsCount + daysInJail,data=recidTraining, family = binomial)
+
+summary(model2)
+
+numTrain <- nrow(recidTraining)
+
+recidPredict <- predict.glm(model2, newdata=recidTraining, type="response")
+
+trainingWithPredictions <- cbind(recidTraining,recidPredict) %>% 
+  mutate(prediction = ifelse(recidPredict < 0.431, "No No Reaffend", "Reaffend Uh oh"))
+
+trainingMatrix <- table(trainingWithPredictions$isRecid,trainingWithPredictions$prediction)
+
+(error <- (trainingMatrix[1,2] + trainingMatrix[2,1])/numTrain)
+
+(pHat <- (trainingMatrix[2,1]+trainingMatrix[2,2])/numTrain)
+
+(standardError <- sqrt(pHat*(1-pHat)/numTrain))
+
+(pValue <- pnorm(error,pHat,standardError))
+
+testingPredict <- predict.glm(model2, newdata=recidTesting, type="response")
+
+testingWithPredictions <- cbind(recidTesting,testingPredict) %>% 
+  mutate(prediction = ifelse(testingPredict < 0.431, "No No Reaffend", "Reaffend Uh oh"))
+
+testingMatrix <- table(testingWithPredictions$isRecid,testingWithPredictions$prediction)
+
+(testingError <- (error <- (testingMatrix[1,2] + testingMatrix[2,1])/numTrain))
+
+recidMysteryBox <- read.csv("datasets/Project3Mystery100.csv")
+
 
 
