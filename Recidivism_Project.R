@@ -20,28 +20,6 @@ createTraining <- function(data, seed = 123, trainPercent = 0.8) {
   return(list(training = trainingData, testing = testingData))
 }
 
-logicRegression <- function(data, model) {
-  
-  numTrain <- nrow(data)
-  
-  trainingPredict <- predict.glm(model, newdata=data, type="response")
-  
-  trainingWithPredictions <- cbind(data,trainingPredict) %>% 
-    mutate(prediction = ifelse(trainingPredict < 0.5, "Not Heart Disease", "Heart Disease"))
-  
-  trainingMatrix <- table(trainingWithPredictions$isRecid,trainingWithPredictions$prediction)
-  
-  error <- (trainingMatrix[1,2] + trainingMatrix[2,1])/numTrain
-  
-  pHat <- (trainingMatrix[2,1]+trainingMatrix[2,2])/numTrain
-  
-  standardError <- sqrt(pHat*(1-pHat)/numTrain)
-  
-  pValue <- pnorm(error,pHat,standardError)
-  
-  return(list(prediction = trainingWithPredictions, matrix = trainingMatrix, error = error, pValue = pValue))
-} 
-
 # Task 1
 
 ## Data Cleaning
@@ -68,7 +46,8 @@ recid2 <- recid %>%
     chargeDegree = as.factor(gsub("[()]","",chargeDegree)),
     riskRecidScoreLevel = as.factor(riskRecidScoreLevel),
     riskRecidScreeningDate = as_date(dmy(riskRecidScreeningDate))
-    )
+    ) %>% 
+  filter(!is.na(isRecid) & (!is.na(jailIn) | !is.na(jailOut)))
 
 ## Data Engineering
 
@@ -92,7 +71,7 @@ recid4 <- recid3 %>%
 
 ## Testing Training Split
 
-testingTraining <- createTraining(recid4)
+testingTraining <- createTraining(recid4, seed=8675309)
 
 recidTraining <- testingTraining$training
 
@@ -281,6 +260,16 @@ ggplot(data=recidTraining,aes(x=sex, fill=fct_recode(as.factor(isRecid),Yes = "1
     fill = "Recidivated"
   )
 
+### ChargeDegree
+
+ggplot(data=recidTraining,aes(x=chargeDegree, fill=fct_recode(as.factor(isRecid),Yes = "1", No = "0"))) +
+  geom_bar(position = "dodge") +
+  labs(
+    title="Charge Degree",
+    x = "Charge Degree",
+    fill = "Recidivated"
+  )
+
 ### Colinearity Check
 
 p15 <- ggplot(recidTraining, aes(x = logDaysInJail, y = logPriorsCount, color = fct_recode(as.factor(isRecid),Yes = "1", No = "0"))) +
@@ -314,58 +303,186 @@ p15 / (p16 + p17) + plot_annotation(title = "Colinearity Check") + plot_layout(g
 
 # Task 2
 
-model1 <- glm(isRecid ~ sex + age + juvTotalCount + priorsCount + logDaysInJail,data=recidTraining, family = binomial)
+getPredict <- function(data, model) {
+  
+  recidPredict <- predict.glm(model, newdata=data, type="response")
+  dataWithPredictions <- cbind(data,recidPredict)
+  
+  return(dataWithPredictions)
+}
 
-summary(model1)
+checkModel <- function(data, matrix) {
+  n <- nrow(data)
+  error <- (matrix[1,2] + matrix[2,1])/n
+  
+  pHat <- (matrix[2,1]+matrix[2,2])/n
+  
+  standardError <- sqrt(pHat*(1-pHat)/n)
+  
+  pValue <- pnorm(error,pHat,standardError)
+  
+  return(list("error" = error,"pValue" = pValue))
+}
 
-numTrain <- nrow(recidTraining)
+## Everything Model
 
-recidPredict <- predict.glm(model1, newdata=recidTraining, type="response")
+everythingModel <- glm(isRecid ~  age + priorsCount + daysInJail + logPriorsCount + logDaysInJail,data=recidTraining, family = binomial)
 
-trainingWithPredictions <- cbind(recidTraining,recidPredict) %>% 
-  mutate(prediction = ifelse(recidPredict < 0.43, "No No Reaffend", "Reaffend Uh oh"))
+everythingPredictTrain <- getPredict(recidTraining, everythingModel) %>% 
+  mutate(prediction = ifelse(recidPredict < 0.5, "Did Not Reaffend", "Reaffended"))
+everythingMatrixTrain <- table(everythingPredictTrain$isRecid,everythingPredictTrain$prediction)
 
-trainingMatrix <- table(trainingWithPredictions$isRecid,trainingWithPredictions$prediction)
+everythingPredictTest <- getPredict(recidTesting, everythingModel) %>% 
+  mutate(prediction = ifelse(recidPredict < 0.5, "Did Not Reaffend", "Reaffended"))
+everythingMatrixTest <- table(everythingPredictTest$isRecid,everythingPredictTest$prediction)
 
-(error <- (trainingMatrix[1,2] + trainingMatrix[2,1])/numTrain)
+(checkModel(recidTraining,everythingMatrixTrain))
 
-(pHat <- (trainingMatrix[2,1]+trainingMatrix[2,2])/numTrain)
+(checkModel(recidTesting,everythingMatrixTest))
 
-(standardError <- sqrt(pHat*(1-pHat)/numTrain))
+summary(everythingModel)
 
-(pValue <- pnorm(error,pHat,standardError))
+## Basic Model
 
-model2 <- glm(isRecid ~ sex + age + priorsCount + daysInJail,data=recidTraining, family = binomial)
+baseModel <- glm(isRecid ~ sex + age + priorsCount + daysInJail,data=recidTraining, family = binomial)
 
-summary(model2)
+basePredictTrain <- getPredict(recidTraining, baseModel) %>% 
+  mutate(prediction = ifelse(recidPredict < 0.5, "Did Not Reaffend", "Reaffended"))
+baseMatrixTrain <- table(basePredictTrain$isRecid,basePredictTrain$prediction)
 
-numTrain <- nrow(recidTraining)
+basePredictTest <- getPredict(recidTesting, baseModel) %>% 
+  mutate(prediction = ifelse(recidPredict < 0.5, "Did Not Reaffend", "Reaffended"))
+baseMatrixTest <- table(basePredictTest$isRecid,basePredictTest$prediction)
 
-recidPredict <- predict.glm(model2, newdata=recidTraining, type="response")
+(checkModel(recidTraining,baseMatrixTrain))
 
-trainingWithPredictions <- cbind(recidTraining,recidPredict) %>% 
-  mutate(prediction = ifelse(recidPredict < 0.431, "No No Reaffend", "Reaffend Uh oh"))
+(checkModel(recidTesting,baseMatrixTest))
 
-trainingMatrix <- table(trainingWithPredictions$isRecid,trainingWithPredictions$prediction)
+## Log Model
 
-(error <- (trainingMatrix[1,2] + trainingMatrix[2,1])/numTrain)
+logModel <- glm(isRecid ~ sex + age + logPriorsCount + logDaysInJail, data=recidTraining, family = binomial)
 
-(pHat <- (trainingMatrix[2,1]+trainingMatrix[2,2])/numTrain)
+logPredictTrain <- getPredict(recidTraining, logModel) %>% 
+  mutate(prediction = ifelse(recidPredict < 0.5, "Did Not Reaffend", "Reaffended"))
+logMatrixTrain <- table(logPredictTrain$isRecid,logPredictTrain$prediction)
 
-(standardError <- sqrt(pHat*(1-pHat)/numTrain))
+logPredictTest <- getPredict(recidTesting, logModel) %>% 
+  mutate(prediction = ifelse(recidPredict < 0.5, "Did Not Reaffend", "Reaffended"))
+logMatrixTest <- table(logPredictTest$isRecid,logPredictTest$prediction)
 
-(pValue <- pnorm(error,pHat,standardError))
+(checkModel(recidTraining,logMatrixTrain))
 
-testingPredict <- predict.glm(model2, newdata=recidTesting, type="response")
+(checkModel(recidTesting,logMatrixTest))
 
-testingWithPredictions <- cbind(recidTesting,testingPredict) %>% 
-  mutate(prediction = ifelse(testingPredict < 0.431, "No No Reaffend", "Reaffend Uh oh"))
+## F*ck Model
 
-testingMatrix <- table(testingWithPredictions$isRecid,testingWithPredictions$prediction)
+fuckModel <- glm(isRecid ~ sex + age + logPriorsCount + daysInJail, data=recidTraining, family = binomial)
 
-(testingError <- (error <- (testingMatrix[1,2] + testingMatrix[2,1])/numTrain))
+fuckPredictTrain <- getPredict(recidTraining, fuckModel) %>% 
+  mutate(prediction = ifelse(recidPredict < 0.5, "Did Not Reaffend", "Reaffended"))
+fuckMatrixTrain <- table(fuckPredictTrain$isRecid,fuckPredictTrain$prediction)
+
+fuckPredictTest <- getPredict(recidTesting, fuckModel) %>% 
+  mutate(prediction = ifelse(recidPredict < 0.5, "Did Not Reaffend", "Reaffended"))
+fuckMatrixTest <- table(fuckPredictTest$isRecid,fuckPredictTest$prediction)
+
+(checkModel(recidTraining,fuckMatrixTrain))
+
+(checkModel(recidTesting,fuckMatrixTest))
 
 recidMysteryBox <- read.csv("datasets/Project3Mystery100.csv")
+
+## F*ck 2 Model
+
+fuck2Model <- glm(isRecid ~ age + logPriorsCount + daysInJail, data=recidTraining, family = binomial)
+
+fuck2PredictTrain <- getPredict(recidTraining, fuck2Model) %>% 
+  mutate(prediction = ifelse(recidPredict < 0.5, "Did Not Reaffend", "Reaffended"))
+fuck2MatrixTrain <- table(fuck2PredictTrain$isRecid,fuck2PredictTrain$prediction)
+
+fuck2PredictTest <- getPredict(recidTesting, fuck2Model) %>% 
+  mutate(prediction = ifelse(recidPredict < 0.5, "Did Not Reaffend", "Reaffended"))
+fuck2MatrixTest <- table(fuck2PredictTest$isRecid,fuck2PredictTest$prediction)
+
+(checkModel(recidTraining,fuck2MatrixTrain))
+
+(checkModel(recidTesting,fuck2MatrixTest))
+
+## F*ck 3 Model
+
+fuck4Model <- glm(isRecid ~ age + logPriorsCount, data=recidTraining, family = binomial)
+
+fuck3PredictTrain <- getPredict(recidTraining, fuck3Model) %>% 
+  mutate(prediction = ifelse(recidPredict < 0.5, "Did Not Reaffend", "Reaffended"))
+fuck3MatrixTrain <- table(fuck3PredictTrain$isRecid,fuck3PredictTrain$prediction)
+
+fuck3PredictTest <- getPredict(recidTesting, fuck3Model) %>% 
+  mutate(prediction = ifelse(recidPredict < 0.5, "Did Not Reaffend", "Reaffended"))
+fuck3MatrixTest <- table(fuck3PredictTest$isRecid,fuck3PredictTest$prediction)
+
+(checkModel(recidTraining,fuck3MatrixTrain))
+
+(checkModel(recidTesting,fuck3MatrixTest))
+
+## F*ck 4 Model
+
+fuck4Model <- glm(isRecid ~ age + sex + logPriorsCount, data=recidTraining, family = binomial)
+
+fuck4PredictTrain <- getPredict(recidTraining, fuck4Model) %>% 
+  mutate(prediction = ifelse(recidPredict < 0.5, "Did Not Reaffend", "Reaffended"))
+fuck4MatrixTrain <- table(fuck4PredictTrain$isRecid,fuck4PredictTrain$prediction)
+
+fuck4PredictTest <- getPredict(recidTesting, fuck4Model) %>% 
+  mutate(prediction = ifelse(recidPredict < 0.5, "Did Not Reaffend", "Reaffended"))
+fuck4MatrixTest <- table(fuck4PredictTest$isRecid,fuck4PredictTest$prediction)
+
+(checkModel(recidTraining,fuck4MatrixTrain))
+
+(checkModel(recidTesting,fuck4MatrixTest))
+
+recidMysteryBox <- read.csv("datasets/Project3Mystery100.csv")
+
+## F*ck 5 Model
+
+fuck5Model <- glm(isRecid ~ age + priorsCount, data=recidTraining, family = binomial)
+
+fuck5PredictTrain <- getPredict(recidTraining, fuck5Model) %>% 
+  mutate(prediction = ifelse(recidPredict < 0.5, "Did Not Reaffend", "Reaffended"))
+fuck5MatrixTrain <- table(fuck5PredictTrain$isRecid,fuck5PredictTrain$prediction)
+
+fuck5PredictTest <- getPredict(recidTesting, fuck5Model) %>% 
+  mutate(prediction = ifelse(recidPredict < 0.5, "Did Not Reaffend", "Reaffended"))
+fuck5MatrixTest <- table(fuck5PredictTest$isRecid,fuck5PredictTest$prediction)
+
+(checkModel(recidTraining,fuck5MatrixTrain))
+
+(checkModel(recidTesting,fuck5MatrixTest))
+
+## F*ck 6 Model
+
+fuck6Model <- glm(isRecid ~ age + logPriorsCount + logDaysInJail, data=recidTraining, family = binomial)
+
+fuck6PredictTrain <- getPredict(recidTraining, fuck6Model) %>% 
+  mutate(prediction = ifelse(recidPredict < 0.5, "Did Not Reaffend", "Reaffended"))
+fuck6MatrixTrain <- table(fuck6PredictTrain$isRecid,fuck6PredictTrain$prediction)
+
+fuck6PredictTest <- getPredict(recidTesting, fuck6Model) %>% 
+  mutate(prediction = ifelse(recidPredict < 0.5, "Did Not Reaffend", "Reaffended"))
+fuck6MatrixTest <- table(fuck6PredictTest$isRecid,fuck6PredictTest$prediction)
+
+(checkModel(recidTraining,fuck6MatrixTrain))
+
+(checkModel(recidTesting,fuck6MatrixTest))
+
+## Final Model
+
+finalModel <-  fuck6Mode
+
+recidMysteryBox <- read.csv("datasets/Project3Mystery100.csv")
+
+##
+
+
 
 
 
