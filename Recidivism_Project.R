@@ -1,6 +1,7 @@
 rm(list = ls())
 library(tidyverse)
 library(lubridate)
+library(olsrr)
 library(patchwork)
 
 recid <- read.csv("datasets/Project3Sample4000.csv")
@@ -39,14 +40,16 @@ recid2 <- recid %>%
   ) %>% 
   mutate(
     dob = as_date(dmy(dob)),
-    ageCat = as.factor(ageCat),
-    race = as.factor(race),
+    ageCat = factor(as.factor(ageCat),levels=c("Less than 25","25 - 45","Greater than 45")),
+    race = factor(as.factor(race),levels=c("white","black","hispanic","other")),
     jailIn = as.Date(dmy_hm(jailIn, tz = "EST")),
     jailOut = as.Date(dmy_hm(jailOut, tz = "EST")),
     chargeDegree = as.factor(gsub("[()]","",chargeDegree)),
     riskRecidScoreLevel = as.factor(riskRecidScoreLevel),
-    riskRecidScreeningDate = as_date(dmy(riskRecidScreeningDate))
+    riskRecidScreeningDate = as_date(dmy(riskRecidScreeningDate)),
+    recidCat = fct_recode(as.factor(isRecid),Yes = "1", No = "0")
     ) %>% 
+  select(-name,-dob) %>% 
   filter(!is.na(isRecid) & (!is.na(jailIn) | !is.na(jailOut)))
 
 ## Data Engineering
@@ -60,12 +63,8 @@ recid3 <- recid2 %>%
     logJuvCount = log10(juvCount+0.1)
   )
 
-## Data Removal
-
 recid4 <- recid3 %>% 
   select (
-    -name,
-    -dob,
     -race
   )
 
@@ -115,12 +114,12 @@ jjplotPoint <- function(data,x,y,color, model) {
   data <- jjIntervals(data,model)
   plot <- ggplot(data=data, aes(x = {{x}}, y = {{y}}, color = {{color}})) +
     geom_point() +
-    geom_ribbon(aes(ymin = 10^confLwr, ymax = 10^confUpr), fill = "yellow", alpha = 0.4) +
-    geom_line(aes(y = 10^fit), color = "#3366FF", size = 0.75) +
-    geom_line(aes(y = 10^confLwr), linetype = "dashed", size = 0.75) +
-    geom_line(aes(y = 10^confUpr), linetype = "dashed", size = 0.75) +
-    geom_line(aes(y = 10^predictLwr), linetype = "dashed", color = "red", size = 0.75) +
-    geom_line(aes(y = 10^predictUpr), linetype = "dashed", color = "red", size = 0.75)
+    geom_ribbon(aes(ymin = confLwr, ymax = confUpr), fill = "yellow", alpha = 0.4) +
+    geom_line(aes(y = fit), color = "#3366FF", size = 0.75) +
+    geom_line(aes(y = confLwr), linetype = "dashed", size = 0.75) +
+    geom_line(aes(y = confUpr), linetype = "dashed", size = 0.75) +
+    geom_line(aes(y = predictLwr), linetype = "dashed", color = "red", size = 0.75) +
+    geom_line(aes(y = predictUpr), linetype = "dashed", color = "red", size = 0.75)
   return(plot)
 }
 
@@ -480,9 +479,87 @@ finalModel <-  fuck6Mode
 
 recidMysteryBox <- read.csv("datasets/Project3Mystery100.csv")
 
-##
+# Recid Score Model & Visuals
+
+testingTraining2 <- createTraining(recid3, seed="859")
+
+recidTraining2 <- testingTraining2$training
+
+recidTesting2 <-  testingTraining2$testing
+
+## Visualization
+
+## Days in Jail vs riskRecidDecileScore
+
+daysScoreModel <- lm(riskRecidDecileScore ~ daysInJail, data=recidTraining2)
+p18 <- jjplotPoint(data = recidTraining2, x = daysInJail, y = riskRecidDecileScore, model = daysScoreModel, color = recidCat)
 
 
+logDaysScoreModel <- lm(riskRecidDecileScore ~ logDaysInJail, data=recidTraining2)
+p19 <- jjplotPoint(data = recidTraining2, x = logDaysInJail, y = riskRecidDecileScore, model = logDaysScoreModel, color = recidCat)
+
+p18 + p19
+
+## Juvenile Count vs riskRecidDecileScore
+
+juvScoreModel <- lm(riskRecidDecileScore ~ juvCount, data=recidTraining2)
+p20 <- jjplotPoint(data = recidTraining2, x = juvCount, y = riskRecidDecileScore, model = juvScoreModel, color = recidCat)
 
 
+logJuvScoreModel <- lm(riskRecidDecileScore ~ logJuvCount, data=recidTraining2)
+p21 <- jjplotPoint(data = recidTraining2, x = logJuvCount, y = riskRecidDecileScore, model = logJuvScoreModel, color = recidCat)
+
+p20 + p21
+
+## Priors Count vs riskRecidDecileScore
+
+priorsScoreModel <- lm(riskRecidDecileScore ~ priorsCount, data=recidTraining2)
+p22<- jjplotPoint(data = recidTraining2, x = priorsCount, y = riskRecidDecileScore, model = priorsScoreModel, color = recidCat)
+
+
+logPriorsScoreModel <- lm(riskRecidDecileScore ~ logPriorsCount, data=recidTraining2)
+p23 <- jjplotPoint(data = recidTraining2, x = logPriorsCount, y = riskRecidDecileScore, model = logPriorsScoreModel, color = recidCat)
+
+p22 + p23
+
+## Age vs riskRecidDecileScore
+
+ageScoreModel <- lm(riskRecidDecileScore ~ age, data=recidTraining2)
+jjplotPoint(data = recidTraining2, x = age, y = riskRecidDecileScore, model = ageScoreModel, color = recidCat)
+
+## Age Cat vs riskRecidDecileScore
+ggplot(data=recidTraining2, aes(riskRecidDecileScore, fill = recidCat)) +
+  geom_density(alpha=.4) +
+  facet_wrap(~ ageCat)
+
+## Race vs riskRecidDecileScore
+
+ggplot(data=recidTraining2, aes(riskRecidDecileScore, fill = recidCat)) +
+  geom_density(alpha=.4) +
+  facet_wrap(~ race)
+
+## Charge Degree vs riskRecidDecileScore
+
+ggplot(data=recidTraining2, aes(riskRecidDecileScore, fill = recidCat)) +
+  geom_density(alpha=.4) +
+  facet_wrap(~ chargeDegree)
+
+## Best Subset
+
+scoreSubsetModel <- lm(riskRecidDecileScore ~ logPriorsCount + priorsCount + age + chargeDegree + logDaysInJail + daysInJail + sex + race, data = recidTesting2)
+
+(olsSubset <- ols_step_best_subset(scoreSubsetModel))
+
+scoreFinalModel <- lm(riskRecidDecileScore ~ priorsCount + age + chargeDegree + logDaysInJail + race, data=recidTraining2)
+
+RMSE <- function(predict, obs) {
+  RMSE <- sqrt(mean((predict - obs)^2, na.rm = TRUE))
+  return(RMSE)
+}
+
+scoreTestingPredicts <- predict.lm(scoreFinalModel, newdata=recidTesting2)
+
+RMSE(scoreTestingPredicts,recidTesting2$riskRecidDecileScore)
+
+## recidViolenceScoreDecileScore
 
