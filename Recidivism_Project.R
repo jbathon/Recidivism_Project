@@ -1,6 +1,7 @@
 rm(list = ls())
 library(tidyverse)
 library(lubridate)
+library(patchwork)
 
 recid <- read.csv("datasets/Project3Sample4000.csv")
 
@@ -71,15 +72,19 @@ recid2 <- recid %>%
 
 ## Data Engineering
 
-strptime(recid2$jailIn, format = "%Y %m %d")
-
 recid3 <- recid2 %>% 
   mutate(
     daysInJail = as.numeric(difftime(jailOut,jailIn,unit="days")+1),
     logDaysInJail = log10(daysInJail),
-    juvTotalCount = juvFelonyCount + juvMisdemeanerCount + juvOtherCount,
-  ) %>% 
-  select(
+    logPriorsCount = log10(priorsCount+0.1),
+    juvCount = juvFelonyCount + juvMisdemeanerCount + juvOtherCount,
+    logJuvCount = log10(juvCount+0.1)
+  )
+
+## Data Removal
+
+recid4 <- recid3 %>% 
+  select (
     -name,
     -dob,
     -race
@@ -87,11 +92,225 @@ recid3 <- recid2 %>%
 
 ## Testing Training Split
 
-testingTraining <- createTraining(recid3)
+testingTraining <- createTraining(recid4)
 
 recidTraining <- testingTraining$training
 
 recidTesting <-  testingTraining$testing
+
+## Visualize Data
+
+### Functions
+
+jjIntervals <-  function(data, model) {
+  
+  confidence <- as.data.frame(predict.lm(model, newdata = data, interval = "confidence")) %>% 
+    rename(confLwr = lwr, confUpr = upr)
+  
+  prediction <- as.data.frame(predict.lm(model, newdata = data, interval = "prediction")) %>%
+    rename(predictLwr = lwr, predictUpr = upr) %>%
+    select(predictLwr, predictUpr)
+  
+  intervalData <- cbind(data,confidence,prediction)
+  
+  return(intervalData)
+}
+
+jjplotDensity <- function(data,x,fill,color) {
+  plot <- ggplot(data, aes(x={{x}})) +
+    geom_density(aes(fill={{fill}}), alpha=0.4)+
+    geom_rug(aes(color={{color}}), y=0) +
+    theme(legend.position = "none")
+  return(plot)
+}
+
+jjplotBoxplot <- function(data,x,y,fill) {
+  plot <- ggplot(data=data, aes(x = {{x}}, y = {{y}}, fill = {{fill}})) +
+    geom_boxplot() +
+    coord_flip() +
+    theme(legend.position = "none")
+  return(plot)
+}
+
+jjplotPoint <- function(data,x,y,color, model) {
+  data <- jjIntervals(data,model)
+  plot <- ggplot(data=data, aes(x = {{x}}, y = {{y}}, color = {{color}})) +
+    geom_point() +
+    geom_ribbon(aes(ymin = 10^confLwr, ymax = 10^confUpr), fill = "yellow", alpha = 0.4) +
+    geom_line(aes(y = 10^fit), color = "#3366FF", size = 0.75) +
+    geom_line(aes(y = 10^confLwr), linetype = "dashed", size = 0.75) +
+    geom_line(aes(y = 10^confUpr), linetype = "dashed", size = 0.75) +
+    geom_line(aes(y = 10^predictLwr), linetype = "dashed", color = "red", size = 0.75) +
+    geom_line(aes(y = 10^predictUpr), linetype = "dashed", color = "red", size = 0.75)
+  return(plot)
+}
+
+### DaysInJail
+
+p1 <- recidTraining %>% 
+  jjplotDensity(x = daysInJail, fill = as.factor(isRecid), color = as.factor(isRecid)) +
+  labs(
+    title="Days in Jail",
+    x = "Days in Jail",
+  )
+
+p2 <- recidTraining %>% 
+  jjplotDensity(x = logDaysInJail, fill = as.factor(isRecid), color = as.factor(isRecid)) +
+  labs(
+    title="log10(Days in Jail",
+    x = "log10(Days in Jail)",
+  )
+
+p3 <- recidTraining %>% 
+  jjplotBoxplot(x = isRecid, y=daysInJail, fill=as.factor(isRecid)) +
+  labs(
+    title="Days in Jail",
+    x = "Days in Jail",
+    y = "Recidivated"
+  )
+
+p4 <- recidTraining %>% 
+  jjplotBoxplot(x = isRecid, y=logDaysInJail, fill=fct_recode(as.factor(isRecid),Yes = "1", No = "0")) +
+  
+  labs(
+    title="log10(Days in Jail)",
+    x = "log10(Days in Jail)",
+    y = "Recidivated",
+    fill = "Recidivated"
+  )
+
+p1 + p2 + p3 + p4 + 
+  plot_annotation(
+    title = "Days in Jail and log10(Days in Jail)",
+  ) + plot_layout(guides = 'collect')
+
+### Priors Count
+
+p5 <- recidTraining %>% 
+  jjplotDensity(x = priorsCount, fill = as.factor(isRecid), color = as.factor(isRecid)) +
+  labs(
+    title="Priors Counts",
+    x = "Priors Counts"
+  )
+p6 <- recidTraining %>% 
+  jjplotDensity(x = logPriorsCount, fill = as.factor(isRecid), color = as.factor(isRecid)) +
+  labs(
+    title="log10(Priors Counts) + 0.1",
+    x = "log10(Priors Counts) + 0.1"
+  )
+p7 <- recidTraining %>% 
+  jjplotBoxplot(x = isRecid, y=priorsCount, fill=as.factor(isRecid)) +
+  labs(
+    title="Priors Counts",
+    x = "Priors Counts",
+    y = "Recidivated",
+    fill = "Recidivated"
+  )
+p8 <- recidTraining %>% 
+  jjplotBoxplot(x = isRecid, y=logPriorsCount, fill=fct_recode(as.factor(isRecid),Yes = "1", No = "0")) +
+  theme(legend.position = "right") +
+  labs(
+    title="log10(Priors Counts) + 0.1",
+    x = "log10(Priors Counts) + 0.1",
+    y = "Recidivated",
+    fill = "Recidivated"
+  )
+p5 + p6 + p7 + p8 + plot_annotation(title = "Priors Counts") + plot_layout(guides = 'collect')
+
+### Juvenile Priors Count
+
+p9 <- recidTraining %>% 
+  jjplotDensity(x = juvCount, fill = as.factor(isRecid), color = as.factor(isRecid)) +
+  labs(
+    title="Juvenile Priors Counts",
+    x = "Juvenile Priors Counts"
+  )
+p10 <- recidTraining %>% 
+  jjplotDensity(x = logJuvCount, fill = as.factor(isRecid), color = as.factor(isRecid)) +
+  labs(
+    title="log10(Juvenile Priors Counts) + 0.1",
+    x = "log10(Juvenile Priors Counts) + 0.1"
+  )
+p11 <- recidTraining %>% 
+  jjplotBoxplot(x = isRecid, y=juvCount, fill=as.factor(isRecid)) +
+  labs(
+    title="Juvenile Priors Counts",
+    x = "Juvenile Priors Counts",
+    y = "Recidivated",
+    fill = "Recidivated"
+  )
+p12 <- recidTraining %>% 
+  jjplotBoxplot(x = isRecid, y=logJuvCount, fill=fct_recode(as.factor(isRecid),Yes = "1", No = "0")) +
+  theme(legend.position = "right") +
+  labs(
+    title="log10(Juvenile Priors Counts) + 0.1",
+    x = "log10(Juvenile Priors Counts) + 0.1",
+    y = "Recidivated",
+    fill = "Recidivated"
+  )
+p9 + p10 + p11 + p12 + plot_annotation(title = "Juvenile Priors Counts") + plot_layout(guides = 'collect')
+
+### Age
+
+p13 <- recidTraining %>% 
+  jjplotDensity(x = age, fill = as.factor(isRecid), color = as.factor(isRecid)) +
+  labs(
+    title="Age",
+    x = "Juvenile Priors Counts"
+  )
+
+p14 <- recidTraining %>% 
+  jjplotBoxplot(x = isRecid, y=age, fill=fct_recode(as.factor(isRecid),Yes = "1", No = "0")) +
+  theme(legend.position = "right") +
+  labs(
+    title="Age",
+    x = "Age",
+    y = "Recidivated",
+    fill = "Recidivated"
+  )
+
+p13 / p14
+
+### Sex
+
+ggplot(data=recidTraining,aes(x=sex, fill=fct_recode(as.factor(isRecid),Yes = "1", No = "0"))) +
+  geom_bar(position = "dodge") +
+  labs(
+    title="Sex",
+    x = "Sex",
+    fill = "Recidivated"
+  )
+
+### Colinearity Check
+
+p15 <- ggplot(recidTraining, aes(x = logDaysInJail, y = logPriorsCount, color = fct_recode(as.factor(isRecid),Yes = "1", No = "0"))) +
+  geom_point() +
+  labs(
+    title="log10(Days In Jail) vs log10(Priors Count)",
+    x = "log10(Days In Jail)",
+    y = "log10(Priors Count)",
+    color = "Recidivated"
+  )
+
+p16 <- ggplot(recidTraining, aes(x = logDaysInJail, y = age, color = fct_recode(as.factor(isRecid),Yes = "1", No = "0"))) +
+  geom_point() +
+  labs(
+    title="log10(Days In Jail) vs Age",
+    x = "log10(Days In Jail)",
+    y = "Age",
+    color = "Recidivated"
+  )
+
+p17 <- ggplot(recidTraining, aes(x = logPriorsCount, y = age, color = fct_recode(as.factor(isRecid),Yes = "1", No = "0"))) +
+  geom_point() +
+  labs(
+    title="log10(Priors Count) vs Age",
+    x = "log10(Priors Count)",
+    y = "Age",
+    color = "Recidivated"
+  )
+
+p15 / (p16 + p17) + plot_annotation(title = "Colinearity Check") + plot_layout(guides = 'collect')
 
 # Task 2
 
