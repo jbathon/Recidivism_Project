@@ -811,3 +811,463 @@ predictedDataframe <- cbind(recidMystery,willRecidivate,predictedRecidScore,pred
 
 write.csv(predictedDataframe,"datasets/PredictedMystery.csv")
 
+# Task 3
+
+recidMale <- read.csv("datasets/Project3Males1500.csv")
+
+recidFemale <- read.csv("datasets/Project3Females1500.csv")
+
+recidMale2 <- recidMale %>% 
+  rename(
+    dayBefScreenArrest = days_b_screening_arrest,
+    jailIn = c_jail_in,
+    jailOut = c_jail_out,
+    daysFromCompas = c_days_from_compas,
+    chargeDegree = c_charge_degree,
+    chargeDesc = c_charge_desc,
+    riskRecidDecileScore = RiskRecidDecileScore,
+    riskRecidScoreLevel = RiskRecidScoreLevel,
+    riskRecidScreeningDate = RiskRecidScreeningDate,
+    riskViolenceDecileScore = RiskViolenceDecileScore,
+    riskViolenceScoreLevel = RiskViolenceScoreLevel
+  ) %>% 
+  mutate(
+    dob = as_date(dmy(dob)),
+    ageCat = factor(as.factor(ageCat),levels=c("Less than 25","25 - 45","Greater than 45")),
+    race = factor(as.factor(race),levels=c("white","black","hispanic","other")),
+    jailIn = as.Date(dmy_hm(jailIn, tz = "EST")),
+    jailOut = as.Date(dmy_hm(jailOut, tz = "EST")),
+    chargeDegree = as.factor(gsub("[()]","",chargeDegree)),
+    riskRecidScoreLevel = as.factor(riskRecidScoreLevel),
+    riskRecidScreeningDate = as_date(dmy(riskRecidScreeningDate)),
+    recidCat = fct_recode(as.factor(isRecid),Yes = "1", No = "0")
+  ) %>% 
+  select(-name,-dob) %>% 
+  filter(!is.na(isRecid) & (!is.na(jailIn) | !is.na(jailOut)))
+
+recidFemale2 <- recidFemale %>% 
+  rename(
+    dayBefScreenArrest = days_b_screening_arrest,
+    jailIn = c_jail_in,
+    jailOut = c_jail_out,
+    daysFromCompas = c_days_from_compas,
+    chargeDegree = c_charge_degree,
+    chargeDesc = c_charge_desc,
+    riskRecidDecileScore = RiskRecidDecileScore,
+    riskRecidScoreLevel = RiskRecidScoreLevel,
+    riskRecidScreeningDate = RiskRecidScreeningDate,
+    riskViolenceDecileScore = RiskViolenceDecileScore,
+    riskViolenceScoreLevel = RiskViolenceScoreLevel
+  ) %>% 
+  mutate(
+    dob = as_date(dmy(dob)),
+    ageCat = factor(as.factor(ageCat),levels=c("Less than 25","25 - 45","Greater than 45")),
+    race = factor(as.factor(race),levels=c("white","black","hispanic","other")),
+    jailIn = as.Date(dmy_hm(jailIn, tz = "EST")),
+    jailOut = as.Date(dmy_hm(jailOut, tz = "EST")),
+    chargeDegree = as.factor(gsub("[()]","",chargeDegree)),
+    riskRecidScoreLevel = as.factor(riskRecidScoreLevel),
+    riskRecidScreeningDate = as_date(dmy(riskRecidScreeningDate)),
+    recidCat = fct_recode(as.factor(isRecid),Yes = "1", No = "0")
+  ) %>% 
+  select(-name,-dob) %>% 
+  filter(!is.na(isRecid) & (!is.na(jailIn) | !is.na(jailOut)))
+
+recidMale3 <- recidMale2 %>% 
+  mutate(
+    daysInJail = as.numeric(difftime(jailOut,jailIn,unit="days")+1),
+    logDaysInJail = log10(daysInJail),
+    logPriorsCount = log10(priorsCount+0.1),
+    juvCount = juvFelonyCount + juvMisdemeanerCount + juvOtherCount,
+    logJuvCount = log10(juvCount+0.1)
+  )
+
+recidFemale3 <- recidFemale2 %>% 
+  mutate(
+    daysInJail = as.numeric(difftime(jailOut,jailIn,unit="days")+1),
+    logDaysInJail = log10(daysInJail),
+    logPriorsCount = log10(priorsCount+0.1),
+    juvCount = juvFelonyCount + juvMisdemeanerCount + juvOtherCount,
+    logJuvCount = log10(juvCount+0.1)
+  )
+
+maleTestingTraining <- createTraining(recidMale3, seed=123)
+maleTraining <- maleTestingTraining$training
+maleTesting <- maleTestingTraining$testing
+
+femaleTestingTraining <- createTraining(recidFemale3, seed=123)
+femaleTraining <- femaleTestingTraining$training
+femaleTesting <- femaleTestingTraining$testing
+
+
+## Data Cleaning & Data Engineering
+
+
+
+## Visuals Male
+### DaysInJail
+
+p25 <- maleTraining %>% 
+  jjplotDensity(x = daysInJail, fill = as.factor(isRecid), color = as.factor(isRecid)) +
+  labs(
+    title="Days in Jail",
+    x = "Days in Jail",
+  )
+
+p26 <- maleTraining %>% 
+  jjplotDensity(x = logDaysInJail, fill = as.factor(isRecid), color = as.factor(isRecid)) +
+  labs(
+    title="log10(Days in Jail",
+    x = "log10(Days in Jail)",
+  )
+
+p27 <- maleTraining %>% 
+  jjplotBoxplot(x = isRecid, y=daysInJail, fill=as.factor(isRecid)) +
+  labs(
+    title="Days in Jail",
+    x = "Recidivated",
+    y = "Days in Jail"
+  )
+
+p28 <- maleTraining %>% 
+  jjplotBoxplot(x = isRecid, y=logDaysInJail, fill=fct_recode(as.factor(isRecid),Yes = "1", No = "0")) +
+  
+  labs(
+    title="log10(Days in Jail)",
+    x = "Recidivated",
+    y = "log10(Days in Jail)",
+    fill = "Recidivated"
+  )
+
+p25 + p26 + p27 + p28 + 
+  plot_annotation(
+    title = "Days in Jail and log10(Days in Jail)",
+  ) + plot_layout(guides = 'collect')
+
+### Priors Count
+
+p26 <- maleTraining %>% 
+  jjplotDensity(x = priorsCount, fill = as.factor(isRecid), color = as.factor(isRecid)) +
+  labs(
+    title="Priors Counts",
+    x = "Priors Counts"
+  )
+p27 <- maleTraining %>% 
+  jjplotDensity(x = logPriorsCount, fill = as.factor(isRecid), color = as.factor(isRecid)) +
+  labs(
+    title="log10(Priors Counts) + 0.1",
+    x = "log10(Priors Counts) + 0.1"
+  )
+p28 <- maleTraining %>% 
+  jjplotBoxplot(x = isRecid, y=priorsCount, fill=as.factor(isRecid)) +
+  labs(
+    title="Priors Counts",
+    x = "Recidivated",
+    y = "Priors Counts",
+    fill = "Recidivated"
+  )
+p29 <- maleTraining %>% 
+  jjplotBoxplot(x = isRecid, y=logPriorsCount, fill=fct_recode(as.factor(isRecid),Yes = "1", No = "0")) +
+  theme(legend.position = "right") +
+  labs(
+    title="log10(Priors Counts) + 0.1",
+    x = "Recidivated",
+    y = "log10(Priors Counts) + 0.1",
+    fill = "Recidivated"
+  )
+p26 + p27 + p28 + p29 + plot_annotation(title = "Priors Counts") + plot_layout(guides = 'collect')
+
+### Juvenile Priors Count
+
+p30 <- maleTraining %>% 
+  jjplotDensity(x = juvCount, fill = as.factor(isRecid), color = as.factor(isRecid)) +
+  labs(
+    title="Juvenile Priors Counts",
+    x = "Juvenile Priors Counts"
+  )
+p31 <- maleTraining %>% 
+  jjplotDensity(x = logJuvCount, fill = as.factor(isRecid), color = as.factor(isRecid)) +
+  labs(
+    title="log10(Juvenile Priors Counts) + 0.1",
+    x = "log10(Juvenile Priors Counts) + 0.1"
+  )
+p32 <- maleTraining %>% 
+  jjplotBoxplot(x = isRecid, y=juvCount, fill=as.factor(isRecid)) +
+  labs(
+    title="Juvenile Priors Counts",
+    x = "Recidivated",
+    y = "Juvenile Priors Counts",
+    fill = "Recidivated"
+  )
+p33 <- maleTraining %>% 
+  jjplotBoxplot(x = isRecid, y=logJuvCount, fill=fct_recode(as.factor(isRecid),Yes = "1", No = "0")) +
+  theme(legend.position = "right") +
+  labs(
+    title="log10(Juvenile Priors Counts) + 0.1",
+    x = "Recidivated",
+    y = "log10(Juvenile Priors Counts) + 0.1",
+    fill = "Recidivated"
+  )
+p30 + p31 + p32 + p33 + plot_annotation(title = "Juvenile Priors Counts") + plot_layout(guides = 'collect')
+
+### Age
+
+p34 <- maleTraining %>% 
+  jjplotDensity(x = age, fill = as.factor(isRecid), color = as.factor(isRecid)) +
+  labs(
+    title="Age",
+    x = "Juvenile Priors Counts"
+  )
+
+p35 <- maleTraining %>% 
+  jjplotBoxplot(x = isRecid, y=age, fill=fct_recode(as.factor(isRecid),Yes = "1", No = "0")) +
+  theme(legend.position = "right") +
+  labs(
+    title="Age",
+    x = "Recidivated",
+    y = "Age",
+    fill = "Recidivated"
+  )
+
+p34 / p35
+
+### Risk Recid Score
+maleTraining %>% 
+  jjplotDensity(x = riskRecidDecileScore, fill = as.factor(isRecid), color = as.factor(isRecid)) +
+  labs(
+    title="Risk Recidivation Score",
+    x = "Juvenile Priors Counts"
+  )
+
+### Colinearity Check
+
+p36 <- ggplot(maleTraining, aes(x = logDaysInJail, y = logPriorsCount, color = fct_recode(as.factor(isRecid),Yes = "1", No = "0"))) +
+  geom_point() +
+  labs(
+    title="log10(Days In Jail) vs log10(Priors Count)",
+    x = "log10(Days In Jail)",
+    y = "log10(Priors Count)",
+    color = "Recidivated"
+  )
+
+p37 <- ggplot(maleTraining, aes(x = logDaysInJail, y = age, color = fct_recode(as.factor(isRecid),Yes = "1", No = "0"))) +
+  geom_point() +
+  labs(
+    title="log10(Days In Jail) vs Age",
+    x = "log10(Days In Jail)",
+    y = "Age",
+    color = "Recidivated"
+  )
+
+p38 <- ggplot(maleTraining, aes(x = logPriorsCount, y = age, color = fct_recode(as.factor(isRecid),Yes = "1", No = "0"))) +
+  geom_point() +
+  labs(
+    title="log10(Priors Count) vs Age",
+    x = "log10(Priors Count)",
+    y = "Age",
+    color = "Recidivated"
+  )
+
+p36 / (p37 + p38) + plot_annotation(title = "Colinearity Check") + plot_layout(guides = 'collect')
+## Male Model
+
+
+maleModel <- glm(isRecid ~ age + priorsCount + daysInJail, data=maleTraining, family = binomial)
+
+malePredictTrain <- getPredict(maleTraining, maleModel) %>% 
+  mutate(prediction = ifelse(recidPredict < 0.5, "Did Not Reaffend", "Reaffended"))
+maleMatrixTrain <- table(malePredictTrain$isRecid,malePredictTrain$prediction)
+
+malePredictTest <- getPredict(recidTesting, maleModel) %>% 
+  mutate(prediction = ifelse(recidPredict < 0.5, "Did Not Reaffend", "Reaffended"))
+maleMatrixTest <- table(malePredictTest$isRecid,malePredictTest$prediction)
+
+(checkModel(recidTraining,maleMatrixTrain))
+
+(checkModel(recidTesting,maleMatrixTest))
+
+summary(maleModel)
+
+## Visuals Female
+
+### DaysInJail
+
+p39 <- femaleTraining %>% 
+  jjplotDensity(x = daysInJail, fill = as.factor(isRecid), color = as.factor(isRecid)) +
+  labs(
+    title="Days in Jail",
+    x = "Days in Jail",
+  )
+
+p40 <- femaleTraining %>% 
+  jjplotDensity(x = logDaysInJail, fill = as.factor(isRecid), color = as.factor(isRecid)) +
+  labs(
+    title="log10(Days in Jail",
+    x = "log10(Days in Jail)",
+  )
+
+p41 <- femaleTraining %>% 
+  jjplotBoxplot(x = isRecid, y=daysInJail, fill=as.factor(isRecid)) +
+  labs(
+    title="Days in Jail",
+    y = "Recidivated",
+    x = "Days in Jail"
+  )
+
+p42 <- femaleTraining %>% 
+  jjplotBoxplot(x = isRecid, y=logDaysInJail, fill=fct_recode(as.factor(isRecid),Yes = "1", No = "0")) +
+  
+  labs(
+    title="log10(Days in Jail)",
+    x = "Recidivated",
+    y = "log10(Days in Jail)",
+    fill = "Recidivated"
+  )
+
+p39 + p40 + p41 + p42 + 
+  plot_annotation(
+    title = "Days in Jail and log10(Days in Jail)",
+  ) + plot_layout(guides = 'collect')
+
+### Priors Count
+
+p43 <- femaleTraining %>% 
+  jjplotDensity(x = priorsCount, fill = as.factor(isRecid), color = as.factor(isRecid)) +
+  labs(
+    title="Priors Counts",
+    x = "Priors Counts"
+  )
+p44 <- femaleTraining %>% 
+  jjplotDensity(x = logPriorsCount, fill = as.factor(isRecid), color = as.factor(isRecid)) +
+  labs(
+    title="log10(Priors Counts) + 0.1",
+    x = "log10(Priors Counts) + 0.1"
+  )
+p45 <- femaleTraining %>% 
+  jjplotBoxplot(x = isRecid, y=priorsCount, fill=as.factor(isRecid)) +
+  labs(
+    title="Priors Counts",
+    x = "Recidivated",
+    y = "Priors Counts",
+    fill = "Recidivated"
+  )
+p46 <- femaleTraining %>% 
+  jjplotBoxplot(x = isRecid, y=logPriorsCount, fill=fct_recode(as.factor(isRecid),Yes = "1", No = "0")) +
+  theme(legend.position = "right") +
+  labs(
+    title="log10(Priors Counts) + 0.1",
+    x = "Recidivated",
+    y = "log10(Priors Counts) + 0.1",
+    fill = "Recidivated"
+  )
+p43 + p44 + p45 + p46 + plot_annotation(title = "Priors Counts") + plot_layout(guides = 'collect')
+
+### Juvenile Priors Count
+
+p47 <- femaleTraining %>% 
+  jjplotDensity(x = juvCount, fill = as.factor(isRecid), color = as.factor(isRecid)) +
+  labs(
+    title="Juvenile Priors Counts",
+    x = "Juvenile Priors Counts"
+  )
+p48 <- femaleTraining %>% 
+  jjplotDensity(x = logJuvCount, fill = as.factor(isRecid), color = as.factor(isRecid)) +
+  labs(
+    title="log10(Juvenile Priors Counts) + 0.1",
+    x = "log10(Juvenile Priors Counts) + 0.1"
+  )
+p49 <- femaleTraining %>% 
+  jjplotBoxplot(x = isRecid, y=juvCount, fill=as.factor(isRecid)) +
+  labs(
+    title="Juvenile Priors Counts",
+    x = "Recidivated",
+    y = "Juvenile Priors Counts",
+    fill = "Recidivated"
+  )
+p50 <- femaleTraining %>% 
+  jjplotBoxplot(x = isRecid, y=logJuvCount, fill=fct_recode(as.factor(isRecid),Yes = "1", No = "0")) +
+  theme(legend.position = "right") +
+  labs(
+    title="log10(Juvenile Priors Counts) + 0.1",
+    x = "Recidivated",
+    y = "log10(Juvenile Priors Counts) + 0.1",
+    fill = "Recidivated"
+  )
+p47 + p48 + p49 + p50 + plot_annotation(title = "Juvenile Priors Counts") + plot_layout(guides = 'collect')
+
+### Age
+
+p51 <- femaleTraining %>% 
+  jjplotDensity(x = age, fill = as.factor(isRecid), color = as.factor(isRecid)) +
+  labs(
+    title="Age",
+    x = "Juvenile Priors Counts"
+  )
+
+p52 <- femaleTraining %>% 
+  jjplotBoxplot(x = isRecid, y=age, fill=fct_recode(as.factor(isRecid),Yes = "1", No = "0")) +
+  theme(legend.position = "right") +
+  labs(
+    title="Age",
+    x = "Recidivated",
+    y = "Age",
+    fill = "Recidivated"
+  )
+
+p51 / p52
+
+### Risk Recid Score
+femaleTraining %>% 
+  jjplotDensity(x = riskRecidDecileScore, fill = as.factor(isRecid), color = as.factor(isRecid)) +
+  labs(
+    title="Risk Recidivation Score",
+    x = "Juvenile Priors Counts"
+  )
+
+### Colinearity Check
+
+p53 <- ggplot(femaleTraining, aes(x = logDaysInJail, y = logPriorsCount, color = fct_recode(as.factor(isRecid),Yes = "1", No = "0"))) +
+  geom_point() +
+  labs(
+    title="log10(Days In Jail) vs log10(Priors Count)",
+    x = "log10(Days In Jail)",
+    y = "log10(Priors Count)",
+    color = "Recidivated"
+  )
+
+p54 <- ggplot(femaleTraining, aes(x = logDaysInJail, y = age, color = fct_recode(as.factor(isRecid),Yes = "1", No = "0"))) +
+  geom_point() +
+  labs(
+    title="log10(Days In Jail) vs Age",
+    x = "log10(Days In Jail)",
+    y = "Age",
+    color = "Recidivated"
+  )
+
+p55 <- ggplot(femaleTraining, aes(x = logPriorsCount, y = age, color = fct_recode(as.factor(isRecid),Yes = "1", No = "0"))) +
+  geom_point() +
+  labs(
+    title="log10(Priors Count) vs Age",
+    x = "log10(Priors Count)",
+    y = "Age",
+    color = "Recidivated"
+  )
+
+p53 / (p54 + p55) + plot_annotation(title = "Colinearity Check") + plot_layout(guides = 'collect')
+
+## female Model
+
+femaleModel <- glm(isRecid ~ age + priorsCount, data=femaleTraining, family = binomial)
+
+femalePredictTrain <- getPredict(femaleTraining, femaleModel) %>% 
+  mutate(prediction = ifelse(recidPredict < 0.5, "Did Not Reaffend", "Reaffended"))
+femaleMatrixTrain <- table(femalePredictTrain$isRecid,femalePredictTrain$prediction)
+
+femalePredictTest <- getPredict(recidTesting, femaleModel) %>% 
+  mutate(prediction = ifelse(recidPredict < 0.5, "Did Not Reaffend", "Reaffended"))
+femaleMatrixTest <- table(femalePredictTest$isRecid,femalePredictTest$prediction)
+
+(checkModel(recidTraining,femaleMatrixTrain))
+
+(checkModel(recidTesting,femaleMatrixTest))
+
