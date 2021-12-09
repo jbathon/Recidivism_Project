@@ -417,7 +417,7 @@ recid2MatrixTest <- table(recid2PredictTest$isRecid,recid2PredictTest$prediction
 
 ## Recid 3 Model
 
-recid4Model <- glm(isRecid ~ age + logPriorsCount, data=recidTraining, family = binomial)
+recid3Model <- glm(isRecid ~ age + logPriorsCount, data=recidTraining, family = binomial)
 
 recid3PredictTrain <- getPredict(recidTraining, recid3Model) %>% 
   mutate(prediction = ifelse(recidPredict < 0.5, "Did Not Reaffend", "Reaffended"))

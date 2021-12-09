@@ -12,7 +12,7 @@ output:
 ---
 
 ```{r setup, include=FALSE}
-knitr::opts_chunk$set(echo = T, warning = F, message = F, cache = F)
+knitr::opts_chunk$set(echo = T, warning = F, message = F, cache = T)
 ```
 
 ```{r imports, include=FALSE}
@@ -152,6 +152,15 @@ checkModel <- function(data, matrix) {
   
   return(list("error" = error,"pValue" = pValue))
 }
+
+# Gets a prediction from the model
+getPredict <- function(data, model) {
+  
+  recidPredict <- predict.glm(model, newdata=data, type="response")
+  dataWithPredictions <- cbind(data,recidPredict)
+  
+  return(dataWithPredictions)
+}
 ```
 
 ```{r dataset}
@@ -164,7 +173,7 @@ recidMysteryBox <- read.csv("datasets/Project3Mystery100.csv")
 
 # Introduction to the Project
 
-<b><i>Recidivism</i></b> is a term used within the criminal justice system which means "the tendency of a criminal to reoffend after serving a sentence in a disciplinary institution." The data we will be analyzing is from Broward County, Florida and includes recidivism predictions from the COMPAS test given to inmates. The goal of this analysis is to, based on various factors of an inmate, predict whether or not they will reoffend within two years of being released. <br><br>
+<b><i>Recidivism</i></b> is a term used within the criminal justice system which means "the tendency of a criminal to reoffend after serving a sentence in a disciplinary institution." The data we will be analyzing is from Broward County, Florida and includes recidivism predictions from two proprietary tests given to inmates. The goal of this analysis is to, based on various factors of an inmate, predict whether or not they will reoffend within two years of being released. <br><br>
 
 By the end of this analysis, we hope to have an accurate classification model for whether or not a person is likely to reoffend as well as have the ability to discuss the accuracy of the model in detail.<br><br>
 
@@ -244,7 +253,7 @@ This is our first model. It is a logistic regression model which predicts whethe
 
 #### Figure 1
 
-```{r dayInJailViz}
+```{r fig1}
 ### DaysInJail Plot
 
 p1 <- recidTraining %>% 
@@ -289,7 +298,7 @@ Figure 1 illustrates that a higher proportion of inmates who spent less time in 
 
 #### Figure 2
 
-```{r}
+```{r fig2}
 ### Priors Count
 
 p5 <- recidTraining %>% 
@@ -328,7 +337,7 @@ Figure 2 illustrates that taking the log base 10 of the number of prior offenses
 
 #### Figure 3
 
-```{r}
+```{r fig3}
 ### Juvenile Priors Count
 
 p9 <- recidTraining %>% 
@@ -367,7 +376,7 @@ Figure 3 shows that we can rule out prior crimes committed in juvenile years. Th
 
 #### Figure 4
 
-```{r}
+```{r fig4}
 ### Age
 
 p13 <- recidTraining %>% 
@@ -394,7 +403,7 @@ Figure 4 shows that age is a factor in whether or not a person will reoffend. Sh
 
 #### Figure 5
 
-```{r}
+```{r fig5}
 ### Sex
 
 ggplot(data=recidTraining,aes(x=sex, fill=fct_recode(as.factor(isRecid),Yes = "1", No = "0"))) +
@@ -411,7 +420,7 @@ Figure 5 takes into account sex as a factor determining reoffending rates. This 
 
 #### Figure 6
 
-```{r}
+```{r fig6}
 ### ChargeDegree
 
 ggplot(data=recidTraining,aes(x=chargeDegree, fill=fct_recode(as.factor(isRecid),Yes = "1", No = "0"))) +
@@ -428,7 +437,7 @@ Figure 6 illustrates the difference in recidivism rate based on charge degree. D
 
 #### Figure 7
 
-```{r}
+```{r fig7}
 ### Colinearity Check
 
 p15 <- ggplot(recidTraining, aes(x = logDaysInJail, y = logPriorsCount, color = fct_recode(as.factor(isRecid),Yes = "1", No = "0"))) +
@@ -468,9 +477,188 @@ Figure 7 shows us that none of the three variables (`age`, `logDaysInJail`, and 
 
 ### The Model
 
-```{r}
+```{r logisticModel1}
+## Everything Model
 
+everythingModel <- glm(isRecid ~  age + priorsCount + daysInJail + logPriorsCount + logDaysInJail,data=recidTraining, family = binomial)
+
+everythingPredictTrain <- getPredict(recidTraining, everythingModel) %>% 
+  mutate(prediction = ifelse(recidPredict < 0.5, "Did Not Reoffend", "Reoffended"))
+everythingMatrixTrain <- table(everythingPredictTrain$isRecid,everythingPredictTrain$prediction)
+
+everythingPredictTest <- getPredict(recidTesting, everythingModel) %>% 
+  mutate(prediction = ifelse(recidPredict < 0.5, "Did Not Reoffend", "Reoffended"))
+everythingMatrixTest <- table(everythingPredictTest$isRecid,everythingPredictTest$prediction)
+
+#checkModel(recidTraining,everythingMatrixTrain)
+
+#checkModel(recidTesting,everythingMatrixTest)
+
+## Basic Model
+
+baseModel <- glm(isRecid ~ sex + age + priorsCount + daysInJail,data=recidTraining, family = binomial)
+
+basePredictTrain <- getPredict(recidTraining, baseModel) %>% 
+  mutate(prediction = ifelse(recidPredict < 0.5, "Did Not Reoffend", "Reoffended"))
+baseMatrixTrain <- table(basePredictTrain$isRecid,basePredictTrain$prediction)
+
+basePredictTest <- getPredict(recidTesting, baseModel) %>% 
+  mutate(prediction = ifelse(recidPredict < 0.5, "Did Not Reoffend", "Reoffended"))
+baseMatrixTest <- table(basePredictTest$isRecid,basePredictTest$prediction)
+
+#checkModel(recidTraining,baseMatrixTrain)
+
+#checkModel(recidTesting,baseMatrixTest)
+
+## Log Model
+
+logModel <- glm(isRecid ~ sex + age + logPriorsCount + logDaysInJail, data=recidTraining, family = binomial)
+
+logPredictTrain <- getPredict(recidTraining, logModel) %>% 
+  mutate(prediction = ifelse(recidPredict < 0.5, "Did Not Reoffend", "Reoffended"))
+logMatrixTrain <- table(logPredictTrain$isRecid,logPredictTrain$prediction)
+
+logPredictTest <- getPredict(recidTesting, logModel) %>% 
+  mutate(prediction = ifelse(recidPredict < 0.5, "Did Not Reoffend", "Reoffended"))
+logMatrixTest <- table(logPredictTest$isRecid,logPredictTest$prediction)
+
+#checkModel(recidTraining,logMatrixTrain)
+
+#checkModel(recidTesting,logMatrixTest)
+
+## Recid Model
+
+recidModel <- glm(isRecid ~ sex + age + logPriorsCount + daysInJail, data=recidTraining, family = binomial)
+
+recidPredictTrain <- getPredict(recidTraining, recidModel) %>% 
+  mutate(prediction = ifelse(recidPredict < 0.5, "Did Not Reoffend", "Reoffended"))
+recidMatrixTrain <- table(recidPredictTrain$isRecid,recidPredictTrain$prediction)
+
+recidPredictTest <- getPredict(recidTesting, recidModel) %>% 
+  mutate(prediction = ifelse(recidPredict < 0.5, "Did Not Reoffend", "Reoffended"))
+recidMatrixTest <- table(recidPredictTest$isRecid,recidPredictTest$prediction)
+
+#checkModel(recidTraining,recidMatrixTrain)
+
+#checkModel(recidTesting,recidMatrixTest)
+
+## Recid 2 Model
+
+recid2Model <- glm(isRecid ~ age + logPriorsCount + daysInJail, data=recidTraining, family = binomial)
+
+recid2PredictTrain <- getPredict(recidTraining, recid2Model) %>% 
+  mutate(prediction = ifelse(recidPredict < 0.5, "Did Not Reoffend", "Reoffended"))
+recid2MatrixTrain <- table(recid2PredictTrain$isRecid,recid2PredictTrain$prediction)
+
+recid2PredictTest <- getPredict(recidTesting, recid2Model) %>% 
+  mutate(prediction = ifelse(recidPredict < 0.5, "Did Not Reoffend", "Reoffended"))
+recid2MatrixTest <- table(recid2PredictTest$isRecid,recid2PredictTest$prediction)
+
+#checkModel(recidTraining,recid2MatrixTrain)
+
+#checkModel(recidTesting,recid2MatrixTest)
+
+## Recid 3 Model
+
+recid3Model <- glm(isRecid ~ age + logPriorsCount, data=recidTraining, family = binomial)
+
+recid3PredictTrain <- getPredict(recidTraining, recid3Model) %>% 
+  mutate(prediction = ifelse(recidPredict < 0.5, "Did Not Reoffend", "Reoffended"))
+recid3MatrixTrain <- table(recid3PredictTrain$isRecid,recid3PredictTrain$prediction)
+
+recid3PredictTest <- getPredict(recidTesting, recid3Model) %>% 
+  mutate(prediction = ifelse(recidPredict < 0.5, "Did Not Reoffend", "Reoffended"))
+recid3MatrixTest <- table(recid3PredictTest$isRecid,recid3PredictTest$prediction)
+
+#checkModel(recidTraining,recid3MatrixTrain)
+
+#checkModel(recidTesting,recid3MatrixTest)
+
+## Recid 4 Model
+
+recid4Model <- glm(isRecid ~ age + sex + logPriorsCount, data=recidTraining, family = binomial)
+
+recid4PredictTrain <- getPredict(recidTraining, recid4Model) %>% 
+  mutate(prediction = ifelse(recidPredict < 0.5, "Did Not Reoffend", "Reoffended"))
+recid4MatrixTrain <- table(recid4PredictTrain$isRecid,recid4PredictTrain$prediction)
+
+recid4PredictTest <- getPredict(recidTesting, recid4Model) %>% 
+  mutate(prediction = ifelse(recidPredict < 0.5, "Did Not Reoffend", "Reoffended"))
+recid4MatrixTest <- table(recid4PredictTest$isRecid,recid4PredictTest$prediction)
+
+#checkModel(recidTraining,recid4MatrixTrain)
+
+#checkModel(recidTesting,recid4MatrixTest)
+
+recidMysteryBox <- read.csv("datasets/Project3Mystery100.csv")
+
+## Recid 5 Model
+
+recid5Model <- glm(isRecid ~ age + priorsCount, data=recidTraining, family = binomial)
+
+recid5PredictTrain <- getPredict(recidTraining, recid5Model) %>% 
+  mutate(prediction = ifelse(recidPredict < 0.5, "Did Not Reoffend", "Reoffended"))
+recid5MatrixTrain <- table(recid5PredictTrain$isRecid,recid5PredictTrain$prediction)
+
+recid5PredictTest <- getPredict(recidTesting, recid5Model) %>% 
+  mutate(prediction = ifelse(recidPredict < 0.5, "Did Not Reoffend", "Reoffended"))
+recid5MatrixTest <- table(recid5PredictTest$isRecid,recid5PredictTest$prediction)
+
+#checkModel(recidTraining,recid5MatrixTrain)
+
+#checkModel(recidTesting,recid5MatrixTest)
+
+## Recid 6 Model
+
+recid6Model <- glm(isRecid ~ age + logPriorsCount + logDaysInJail, data=recidTraining, family = binomial)
+
+recid6PredictTrain <- getPredict(recidTraining, recid6Model) %>% 
+  mutate(prediction = ifelse(recidPredict < 0.5, "Did Not Reoffend", "Reoffended"))
+recid6MatrixTrain <- table(recid6PredictTrain$isRecid,recid6PredictTrain$prediction)
+
+recid6PredictTest <- getPredict(recidTesting, recid6Model) %>% 
+  mutate(prediction = ifelse(recidPredict < 0.5, "Did Not Reoffend", "Reoffended"))
+recid6MatrixTest <- table(recid6PredictTest$isRecid,recid6PredictTest$prediction)
+
+
+
+#stored for use in markdown
+trainList6 <- checkModel(recidTraining,recid6MatrixTrain)
+trainError <- trainList6$error
+trainPVal <- trainList6$pValue
+
+testList6 <- checkModel(recidTesting,recid6MatrixTest)
+testError <- testList6$error
+testPVal <- testList6$pValue
+
+matrix = recid6MatrixTest
+manualErrorValue <- (matrix[1,2]+matrix[2,1])/nrow(recidTesting)
+
+coeffs = recid6Model$coefficients
+
+nullHyp = (matrix[2,1]+matrix[2,2])/nrow(recidTesting)
+
+## Final Model
+
+finalModel <-  recid6Model
 ```
 
+The model we made from this data to predict whether or not an inmate will reoffend without the use of the proprietary recidivation and violence scores included in the data is as follows:<br>
+
+$$willReoffend = \lfloor `r coeffs[1]` + `r coeffs[2]` \cdot age + $$
+
+$$`r coeffs[3]` \cdot log_{10}(priorsCount) + `r coeffs[4]` \cdot log_{10}(daysInJail) \rceil$$
+
+The model equation above has a mixed pairing of one floor and one ceiling symbol, this is intended to communicate proper rounding. These model statistics will be based off the testing data set as we only care how well it can predict unknown value, not how well the model we have fits the data it was made from.<br>
+
+Some model coefficients listed above are a bit obscure in their effect. For example, the coefficients of the logged values indicated that the prediction (ideally between zero and one but rounded) will go up or down according to every power of ten included in the original variable. This is in contrast to the coefficient for the linear term, age, which indicates that the prediciton will go down by 0.03 likelihood to reoffend for every year of age the inmate has.<br>
+
+This model, when demonstrated on testing data, has a prediction error of $`r testError`$ meaning that approximately $`r round(testError*100, 2)`\%$ of the predictions made with this model will either be false positives or false negatives. In this case that means $`r round(testError*100, 2)`\%$ of inmates will be predicted to reoffend when they do not OR predicted not to reoffend when they do. <br>
+
+This is derived from our confusion matrix which was created upon the testing of this model. Our error rate for those inmates who did not reoffend can be shown as a proportion of the data which was predicted incorrectly as reoffending whereas the error rate for those inmates that did reoffend can be shown as the proportion of the data which was predicted incorrectly as not reoffending.
+$errorPercentage = \frac{`r matrix[2,1]` + `r matrix[1,2]`}{`r nrow(recidTesting)`}$.
+Here, the first term in the numerator is the number of people in the data frame that did not reoffend but were predicted to reoffend while the second term in the numerator is the number of people who did reoffend but were predicted as not reoffending. The term in the denominator is the sample size contained within this specific dataframe. This ultimately results in the error value `r manualErrorValue`.
+
+This model's p-value regarding the testing data is $`r testPVal`$. When this value is below 0.05, that means the model fitted to the data is statistically significant as it has a less than $5\%$ chance to occur randomly given random data whereas if it is above 0.05 it is not statistically significant because it has a greater than $5\%$ chance to occur randomly given random data. This p-value was created by a function located at the top of the markdown; however, it was calculated with a one-tail hypothesis test comparing two proportions. The null model states that $`r round(nullHyp*100)`\%$ of inmates will recidivate as this is the percentage of inmates in the data that do recidivate. The alternate hypothesis is that the recidivation rate is something other than this. The two proportions used for this hypothesis test are the error, which is the number of people who were incorrectly predicted over the number of total people, and the p-hat value, which is the total number of people who reoffended in the selected data set over the total number of people in that data set. The standard error used was from a standard calculation of standard error given population size and a single proportion.
 
 ## Logistic Regression 2: Predicting Recidivism with Black-Box Predictors in Data
