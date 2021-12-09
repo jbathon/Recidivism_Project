@@ -662,3 +662,13 @@ Here, the first term in the numerator is the number of people in the data frame 
 This model's p-value regarding the testing data is $`r testPVal`$. When this value is below 0.05, that means the model fitted to the data is statistically significant as it has a less than $5\%$ chance to occur randomly given random data whereas if it is above 0.05 it is not statistically significant because it has a greater than $5\%$ chance to occur randomly given random data. This p-value was created by a function located at the top of the markdown; however, it was calculated with a one-tail hypothesis test comparing two proportions. The null model states that $`r round(nullHyp*100)`\%$ of inmates will recidivate as this is the percentage of inmates in the data that do recidivate. The alternate hypothesis is that the recidivation rate is something other than this. The two proportions used for this hypothesis test are the error, which is the number of people who were incorrectly predicted over the number of total people, and the p-hat value, which is the total number of people who reoffended in the selected data set over the total number of people in that data set. The standard error used was from a standard calculation of standard error given population size and a single proportion.<br><br>
 
 ## Logistic Regression 2: Predicting Recidivism with Black-Box Predictors in Data
+
+This is our second model. It is a logistic regression model which predicts whether or not an inmate will reoffend within two years of being released, but this time we will be including the black box predictors of `riskRecidDecileLevel` and `riskViolenceDecileScore`. Figures 1-7 are also applicable to this model and figures 8-9 are new plots which visualize the two new variables.
+
+### Relevant Data Visualizations
+
+#### Figure 8
+
+
+
+#### Figure 9
