@@ -1,6 +1,6 @@
 ---
 title: "Recidvism Project"
-author: "Bathon (Jaden)"
+author: "J & J (Bathon and Grosse)"
 date: "12/2/2021"
 output: 
   html_document:
@@ -12,14 +12,440 @@ output:
 ---
 
 ```{r setup, include=FALSE}
-knitr::opts_chunk$set(echo = TRUE, warning = FALSE, message = FALSE, cache = TRUE)
+knitr::opts_chunk$set(echo = T, warning = F, message = F, cache = T)
 ```
 
 ```{r imports, include=FALSE}
+rm(list = ls())
 library(tidyverse)
-library(olsrr)
+# Great for dates
+library(lubridate)
+# Put multiple plots into one figure in... creative ways...
+library(patchwork)
+
+# font stuffs ensure version 1.3.8 for Rttf2pt1
+library(Rttf2pt1)
+library(extrafont)
+loadfonts(device="win")
+```
+
+```{r theming, include=FALSE}
+# Custom plot theme which preserves default, readable background while still making the plot look nice.
+theme_custom <- function (base_size = 12, base_family = "Malgun Gothic") {
+  theme (
+    line = element_line(colour = "black", size = 0.5, linetype = 1, lineend = "butt"), 
+    rect = element_rect(fill = "white", colour = "black", size = 0.5, linetype = 1), 
+    text = element_text(family = base_family, face = "plain", colour = "white", size = base_size, hjust = 0.5, vjust = 0.5, angle = 0, lineheight = 0.9), 
+
+    axis.text = element_text(size = rel(0.8), colour = "white", margin=margin(.5,.5,0.2,0.2,unit="cm")), 
+    strip.text = element_text(size = rel(0.8)),
+    axis.line = element_blank(), 
+    axis.text.x = element_text(vjust = 0), 
+    axis.text.y = element_text(hjust = 1), 
+    axis.ticks = element_line(colour = "white"), 
+    axis.title.x = element_text(), 
+    axis.title.y = element_text(angle = 90), 
+    axis.ticks.length = unit(0.15, "cm"), 
+
+    legend.background = element_rect(fill="transparent", colour = NA), 
+    legend.spacing = unit(0.2, "cm"), 
+    legend.key = element_rect(fill = "#424c50", colour = "#2E3132"), 
+    legend.key.size = unit(1.2, "lines"), 
+    legend.key.height = NULL, 
+    legend.key.width = NULL, 
+    legend.text = element_text(size = rel(0.8)), 
+    legend.text.align = NULL, 
+    legend.title = element_text(size = rel(0.8), face = "bold", hjust = 0), 
+    legend.title.align = NULL, 
+    legend.position = "right", 
+    legend.direction = NULL, 
+    legend.justification = "center", 
+    legend.box = NULL, 
+
+    strip.background = element_rect(fill = "#27586B", colour = NA), 
+    strip.text.x = element_text(), 
+    strip.text.y = element_text(angle = -90), 
+
+    plot.background = element_rect(fill = "#2E3132"),
+    plot.title = element_text(size = rel(1.25), vjust = 1.25), 
+    plot.margin = unit(c(1, 1, 0.5, 0.5), "lines"), 
+    complete = TRUE)
+}
+
+```
+
+```{r functions}
+# Creates a list containing testing and training dataframes
+createTraining <- function(data, seed = 123, trainPercent = 0.8) {
+  set.seed(seed)
+  n <- nrow(data)
+  
+  numTrain <- floor(trainPercent * n)
+  trainingRows <- sample(1:n, size = numTrain, replace = FALSE)
+  
+  trainingData <- data[trainingRows, ]
+  testingData <- data[-trainingRows, ]
+  
+  return(list(training = trainingData, testing = testingData))
+}
+
+# Creates confidence and prediction intervals
+jjIntervals <-  function(data, model) {
+  
+  confidence <- as.data.frame(predict.lm(model, newdata = data, interval = "confidence")) %>% 
+    rename(confLwr = lwr, confUpr = upr)
+  
+  prediction <- as.data.frame(predict.lm(model, newdata = data, interval = "prediction")) %>%
+    rename(predictLwr = lwr, predictUpr = upr) %>%
+    select(predictLwr, predictUpr)
+  
+  intervalData <- cbind(data,confidence,prediction)
+  
+  return(intervalData)
+}
+
+# Creates a density plot given parameters
+jjplotDensity <- function(data,x,fill,color) {
+  plot <- ggplot(data, aes(x={{x}})) +
+    geom_density(aes(fill={{fill}}), alpha=0.4)+
+    geom_rug(aes(color={{color}}), y=0) +
+    theme_custom() +
+    theme(legend.position = "none")
+  return(plot)
+}
+
+# Creates a boxplot given parameters
+jjplotBoxplot <- function(data,x,y,fill) {
+  plot <- ggplot(data=data, aes(x = {{x}}, y = {{y}}, fill = {{fill}})) +
+    geom_boxplot() +
+    coord_flip() +
+    theme_custom() +
+    theme(legend.position = "none")
+  return(plot)
+}
+
+# Creates a scatter plot
+jjplotPoint <- function(data,x,y,color, model) {
+  data <- jjIntervals(data,model)
+  plot <- ggplot(data=data, aes(x = {{x}}, y = {{y}}, color = {{color}})) +
+    geom_point() +
+    geom_ribbon(aes(ymin = 10^confLwr, ymax = 10^confUpr), fill = "yellow", alpha = 0.4) +
+    geom_line(aes(y = 10^fit), color = "#3366FF", size = 0.75) +
+    geom_line(aes(y = 10^confLwr), linetype = "dashed", size = 0.75) +
+    geom_line(aes(y = 10^confUpr), linetype = "dashed", size = 0.75) +
+    geom_line(aes(y = 10^predictLwr), linetype = "dashed", color = "red", size = 0.75) +
+    geom_line(aes(y = 10^predictUpr), linetype = "dashed", color = "red", size = 0.75) +
+    theme_custom()
+  return(plot)
+}
+
+# Checks a model and gives back error and p-value
+checkModel <- function(data, matrix) {
+  n <- nrow(data)
+  error <- (matrix[1,2] + matrix[2,1])/n
+  
+  pHat <- (matrix[2,1]+matrix[2,2])/n
+  
+  standardError <- sqrt(pHat*(1-pHat)/n)
+  
+  pValue <- pnorm(error,pHat,standardError)
+  
+  return(list("error" = error,"pValue" = pValue))
+}
 ```
 
 ```{r dataset}
+# full data set
+recid <- read.csv("datasets/Project3Sample4000.csv")
 
+# mystery project data
+recidMysteryBox <- read.csv("datasets/Project3Mystery100.csv")
 ```
+
+# Introduction to the Project
+
+<b><i>Recidivism</i></b> is a term used within the criminal justice system which means "the tendency of a criminal to reoffend after serving a sentence in a disciplinary institution." The data we will be analyzing is from Broward County, Florida and includes recidivism predictions from the COMPAS test given to inmates. The goal of this analysis is to, based on various factors of an inmate, predict whether or not they will reoffend within two years of being released. <br><br>
+
+By the end of this analysis, we hope to have an accurate classification model for whether or not a person is likely to reoffend as well as have the ability to discuss the accuracy of the model in detail.<br><br>
+
+Finally, we hope to understand the ethical implications of the model we make and to know how to mitigate and/or measure the biases held by the model itself.<br><br><br>
+
+# Task 1: Data Cleaning
+
+This task revolves around visualizing the data and making the data we are given usable. We clean the full data set found in the <i>Project3Sample4000.csv</i> file. This includes data cleaning, feature engineering, and data refining along with the creation of a testing training split.
+
+```{r dataWork}
+## Data Cleaning
+recid2 <- recid %>% 
+  rename(
+    dayBefScreenArrest = days_b_screening_arrest,
+    jailIn = c_jail_in,
+    jailOut = c_jail_out,
+    daysFromCompas = c_days_from_compas,
+    chargeDegree = c_charge_degree,
+    chargeDesc = c_charge_desc,
+    riskRecidDecileScore = RiskRecidDecileScore,
+    riskRecidScoreLevel = RiskRecidScoreLevel,
+    riskRecidScreeningDate = RiskRecidScreeningDate,
+    riskViolenceDecileScore = RiskViolenceDecileScore,
+    riskViolenceScoreLevel = RiskViolenceScoreLevel
+  ) %>% 
+  mutate(
+    dob = as_date(dmy(dob)),
+    ageCat = as.factor(ageCat),
+    race = as.factor(race),
+    jailIn = as.Date(dmy_hm(jailIn, tz = "EST")),
+    jailOut = as.Date(dmy_hm(jailOut, tz = "EST")),
+    chargeDegree = as.factor(gsub("[()]","",chargeDegree)),
+    riskRecidScoreLevel = as.factor(riskRecidScoreLevel),
+    riskRecidScreeningDate = as_date(dmy(riskRecidScreeningDate))
+    )
+
+## Data Engineering
+
+recid3 <- recid2 %>% 
+  mutate(
+    daysInJail = as.numeric(difftime(jailOut,jailIn,unit="days")+1),
+    logDaysInJail = log10(daysInJail),
+    logPriorsCount = log10(priorsCount+0.1),
+    juvCount = juvFelonyCount + juvMisdemeanerCount + juvOtherCount,
+    logJuvCount = log10(juvCount+0.1)
+  )
+
+## Data Removal
+
+recid4 <- recid3 %>% 
+  select (
+    -name,
+    -dob,
+    -race
+  )
+
+## Testing Training Split
+
+testingTraining <- createTraining(recid4, seed=8675309)
+
+recidTraining <- testingTraining$training
+
+recidTesting <-  testingTraining$testing
+```
+
+In our data cleaning, we forced date variables to be dates and factor variables to be factors. Then we engineered a few categories in the data - some for convenience and some for purpose. These include the following: `daysInJail` (difference between entry and exit of jail), `logDaysInJail` (log base 10 of `daysInJail`), `logPriorsCount` (log base 10 of `priorsCount`), `juvCount` (total of all juvenile crime categories), and `logJuvCount` (log base 10 of `juvCount`). We then remove `name`, `dob`, and `race` because `name` is irrelevant to recidivism, `dob` is covered by the included `age` category, and `race` is not fair to include in a predictive model as there is no definitive difference aside from visually between two people of different races.<br><br>
+
+## Figure 1
+
+```{r dayInJailViz}
+### DaysInJail Plot
+
+p1 <- recidTraining %>% 
+  jjplotDensity(x = daysInJail, fill = as.factor(isRecid), color = as.factor(isRecid)) +
+  labs(
+    title="Days in Jail",
+    x = "Days in Jail"
+  )
+
+p2 <- recidTraining %>% 
+  jjplotDensity(x = logDaysInJail, fill = as.factor(isRecid), color = as.factor(isRecid)) +
+  labs(
+    title="Log10 of Days in Jail",
+    x = "log10(daysInJail)"
+  )
+
+p3 <- recidTraining %>% 
+  jjplotBoxplot(x = isRecid, y=daysInJail, fill=as.factor(isRecid)) +
+  labs(
+    title="Days in Jail",
+    y = "Days in Jail",
+    x = "Reoffence Prediction Proportion"
+  )
+
+p4 <- recidTraining %>% 
+  jjplotBoxplot(x = isRecid, y=logDaysInJail, fill=fct_recode(as.factor(isRecid),Yes = "1", No = "0")) +
+  labs(
+    title="Log Base 10 of Days in Jail",
+    y = "log10(daysInJail)",
+    x = "Reoffence Prediction Proportion",
+    fill = "Reoffence Prediction Proportion"
+  )
+
+p1 + p2 + p3 + p4 + 
+  plot_annotation(
+    title = "Days in Jail and log10(Days in Jail)",
+    theme=theme_custom()
+  ) + plot_layout(guides = 'collect')
+```
+
+Figure one illustrates that a higher proportion of inmates who spent less time in prison when compared to the proportion of prisoners likely to reoffend who spent a longer duration in jail. This is shown more clearly in the right two plots as the left two plots are so heavily skewed left that they are not very readable. The left two plots are included to demonstrate that taking the log base 10 of `daysInJail` eliminates much of the leftward skew therefore being a more sensitive predictor to be included within a model than simply `daysInJail`.
+
+## Figure 2
+
+```{r}
+### Priors Count
+
+p5 <- recidTraining %>% 
+  jjplotDensity(x = priorsCount, fill = as.factor(isRecid), color = as.factor(isRecid)) +
+  labs(
+    title="Priors Counts",
+    x = "Priors Counts"
+  )
+p6 <- recidTraining %>% 
+  jjplotDensity(x = logPriorsCount, fill = as.factor(isRecid), color = as.factor(isRecid)) +
+  labs(
+    title="log10(Priors Counts + 0.1)",
+    x = "log10(Priors Counts + 0.1)"
+  )
+p7 <- recidTraining %>% 
+  jjplotBoxplot(x = isRecid, y=priorsCount, fill=as.factor(isRecid)) +
+  labs(
+    title="Priors Counts",
+    y = "Priors Counts",
+    x = "Recidivated",
+    fill = "Recidivated"
+  )
+p8 <- recidTraining %>% 
+  jjplotBoxplot(x = isRecid, y=logPriorsCount, fill=fct_recode(as.factor(isRecid),Yes = "1", No = "0")) +
+  theme(legend.position = "right") +
+  labs(
+    title="log10(Priors Counts + 0.1)",
+    y = "log10(Priors Counts + 0.1)",
+    x = "Recidivated",
+    fill = "Recidivated"
+  )
+p5 + p6 + p7 + p8 + plot_annotation(title = "Priors Counts", theme=theme_custom()) + plot_layout(guides = 'collect')
+```
+
+Figure two illustrates that taking the log base 10 of the number of prior offenses (plus 0.1 to avoid taking the log10 of 0) improves the sensitivity of the predictions made with that variable as well as reducing the number of outliers included in the data which means the model will better predict whether or not an inmate will reoffend after being released. For this reason, we will be using the log base 10 of prior count as opposed to just `priorCount`.
+
+## Figure 3
+
+```{r}
+### Juvenile Priors Count
+
+p9 <- recidTraining %>% 
+  jjplotDensity(x = juvCount, fill = as.factor(isRecid), color = as.factor(isRecid)) +
+  labs(
+    title="Juvenile Priors Counts",
+    x = "Juvenile Priors Counts"
+  )
+p10 <- recidTraining %>% 
+  jjplotDensity(x = logJuvCount, fill = as.factor(isRecid), color = as.factor(isRecid)) +
+  labs(
+    title="log10(Juvenile Priors Counts + 0.1)",
+    x = "log10(Juvenile Priors Counts + 0.1)"
+  )
+p11 <- recidTraining %>% 
+  jjplotBoxplot(x = isRecid, y=juvCount, fill=as.factor(isRecid)) +
+  labs(
+    title="Juvenile Priors Counts",
+    y = "Juvenile Priors Counts",
+    x = "Recidivated",
+    fill = "Recidivated"
+  )
+p12 <- recidTraining %>% 
+  jjplotBoxplot(x = isRecid, y=logJuvCount, fill=fct_recode(as.factor(isRecid),Yes = "1", No = "0")) +
+  theme(legend.position = "right") +
+  labs(
+    title="log10(Juvenile Priors Counts + 0.1)",
+    y = "log10(Juvenile Priors Counts + 0.1)",
+    x = "Recidivated",
+    fill = "Recidivated"
+  )
+p9 + p10 + p11 + p12 + plot_annotation(title = "Juvenile Priors Counts", theme=theme_custom()) + plot_layout(guides = 'collect')
+```
+
+
+## Figure 4
+
+```{r}
+### Age
+
+p13 <- recidTraining %>% 
+  jjplotDensity(x = age, fill = as.factor(isRecid), color = as.factor(isRecid)) +
+  labs(
+    title="Age",
+    x = "Juvenile Priors Counts"
+  )
+
+p14 <- recidTraining %>% 
+  jjplotBoxplot(x = isRecid, y=age, fill=fct_recode(as.factor(isRecid),Yes = "1", No = "0")) +
+  theme(legend.position = "right") +
+  labs(
+    title="Age",
+    x = "Age",
+    y = "Recidivated",
+    fill = "Recidivated"
+  )
+
+p13 / p14 + plot_annotation(theme=theme_custom())
+```
+
+
+## Figure 5
+
+```{r}
+### Sex
+
+ggplot(data=recidTraining,aes(x=sex, fill=fct_recode(as.factor(isRecid),Yes = "1", No = "0"))) +
+  geom_bar(position = "dodge") +
+  labs(
+    title="Sex",
+    x = "Sex",
+    fill = "Recidivated"
+  ) +
+  theme_custom()
+```
+
+
+## Figure 6
+
+```{r}
+### ChargeDegree
+
+ggplot(data=recidTraining,aes(x=chargeDegree, fill=fct_recode(as.factor(isRecid),Yes = "1", No = "0"))) +
+  geom_bar(position = "dodge") +
+  labs(
+    title="Charge Degree",
+    x = "Charge Degree",
+    fill = "Recidivated"
+  ) +
+  theme_custom()
+```
+
+## Colinearity Checking
+
+```{r}
+### Colinearity Check
+
+p15 <- ggplot(recidTraining, aes(x = logDaysInJail, y = logPriorsCount, color = fct_recode(as.factor(isRecid),Yes = "1", No = "0"))) +
+  geom_point() +
+  labs(
+    title="log10(Days In Jail) vs log10(Priors Count)",
+    x = "log10(Days In Jail)",
+    y = "log10(Priors Count)",
+    color = "Recidivated"
+  ) +
+  theme_custom()
+
+p16 <- ggplot(recidTraining, aes(x = logDaysInJail, y = age, color = fct_recode(as.factor(isRecid),Yes = "1", No = "0"))) +
+  geom_point() +
+  labs(
+    title="log10(Days In Jail) vs Age",
+    x = "log10(Days In Jail)",
+    y = "Age",
+    color = "Recidivated"
+  ) +
+  theme_custom()
+
+p17 <- ggplot(recidTraining, aes(x = logPriorsCount, y = age, color = fct_recode(as.factor(isRecid),Yes = "1", No = "0"))) +
+  geom_point() +
+  labs(
+    title="log10(Priors Count) vs Age",
+    x = "log10(Priors Count)",
+    y = "Age",
+    color = "Recidivated"
+  ) +
+  theme_custom()
+
+p15 / (p16 + p17) + plot_annotation(title = "Colinearity Check", theme=theme_custom()) + plot_layout(guides = 'collect')
+```
+
