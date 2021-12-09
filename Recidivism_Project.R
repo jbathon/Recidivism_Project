@@ -269,6 +269,14 @@ ggplot(data=recidTraining,aes(x=chargeDegree, fill=fct_recode(as.factor(isRecid)
     fill = "Recidivated"
   )
 
+### Risk Recid Score
+recidTraining %>% 
+  jjplotDensity(x = riskRecidDecileScore, fill = as.factor(isRecid), color = as.factor(isRecid)) +
+  labs(
+    title="Risk Recidivation Score",
+    x = "Juvenile Priors Counts"
+  )
+
 ### Colinearity Check
 
 p15 <- ggplot(recidTraining, aes(x = logDaysInJail, y = logPriorsCount, color = fct_recode(as.factor(isRecid),Yes = "1", No = "0"))) +
@@ -488,6 +496,43 @@ recidTesting2 <-  testingTraining2$testing
 ## Visualization
 
 ## Days in Jail vs riskRecidDecileScore
+
+# Recid with Scores
+
+riskModel <- glm(isRecid ~ age + logPriorsCount + logDaysInJail + riskRecidDecileScore + riskViolenceDecileScore, data=recidTraining, family = binomial)
+summary(riskModel)
+
+riskModel2 <- glm(isRecid ~ age + logPriorsCount + logDaysInJail + riskRecidDecileScore, data=recidTraining, family = binomial)
+summary(riskModel2)
+
+riskModel3 <- glm(isRecid ~ age + logPriorsCount + riskRecidDecileScore, data=recidTraining, family = binomial)
+summary(riskModel2)
+
+riskPredictTrain <- getPredict(recidTraining, riskModel3) %>% 
+  mutate(prediction = ifelse(recidPredict < 0.5, "Did Not Reaffend", "Reaffended"))
+riskMatrixTrain <- table(riskPredictTrain$isRecid,riskPredictTrain$prediction)
+
+riskPredictTest <- getPredict(recidTesting, riskModel3) %>% 
+  mutate(prediction = ifelse(recidPredict < 0.5, "Did Not Reaffend", "Reaffended"))
+riskMatrixTest <- table(riskPredictTest$isRecid,riskPredictTest$prediction)
+
+(checkModel(recidTraining,riskMatrixTrain))
+
+(checkModel(recidTesting,riskMatrixTest))
+
+## Final Model
+
+finalModel <-  recid6Model
+
+# Recid Score Model & Visuals
+
+testingTraining2 <- createTraining(recid3, seed="859")
+
+recidTraining2 <- testingTraining2$training
+
+recidTesting2 <-  testingTraining2$testing
+
+# Multiple Regression
 
 
 p18 <- ggplot(data = recidTraining2, aes(x = daysInJail, y = riskRecidDecileScore, fill= recidCat)) +
