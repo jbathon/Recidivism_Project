@@ -113,7 +113,7 @@ jjplotBoxplot <- function(data,x,y,fill) {
 jjplotPoint <- function(data,x,y,color, model) {
   data <- jjIntervals(data,model)
   plot <- ggplot(data=data, aes(x = {{x}}, y = {{y}}, color = {{color}})) +
-    geom_point() +
+    geom_jitter() +
     geom_ribbon(aes(ymin = confLwr, ymax = confUpr), fill = "yellow", alpha = 0.4) +
     geom_line(aes(y = fit), color = "#3366FF", size = 0.75) +
     geom_line(aes(y = confLwr), linetype = "dashed", size = 0.75) +
@@ -475,9 +475,7 @@ fuck6MatrixTest <- table(fuck6PredictTest$isRecid,fuck6PredictTest$prediction)
 
 ## Final Model
 
-finalModel <-  fuck6Mode
-
-recidMysteryBox <- read.csv("datasets/Project3Mystery100.csv")
+finalModel <-  fuck6Model
 
 # Recid Score Model & Visuals
 
@@ -562,4 +560,123 @@ scoreTestingPredicts <- predict.lm(scoreFinalModel, newdata=recidTesting2)
 RMSE(scoreTestingPredicts,recidTesting2$riskRecidDecileScore)
 
 ## recidViolenceScoreDecileScore
+
+## Days in Jail vs riskViolenceDecileScore
+
+ggplot(recidTraining2, aes(x = daysInJail, fill= recidCat)) +
+  geom_density(alpha=.4) +
+  facet_wrap(~riskViolenceDecileScore)
+
+daysViolenceModel <- lm(riskViolenceDecileScore ~ daysInJail, data=recidTraining2)
+p24 <- jjplotPoint(data = recidTraining2, x = daysInJail, y = riskViolenceDecileScore, model = daysViolenceModel, color = recidCat)
+
+
+logDaysViolenceModel <- lm(riskViolenceDecileScore ~ logDaysInJail, data=recidTraining2)
+p25 <- jjplotPoint(data = recidTraining2, x = logDaysInJail, y = riskViolenceDecileScore, model = logDaysViolenceModel, color = recidCat)
+
+p24 + p25
+
+## Juvenile Count vs riskViolenceDecileScore
+
+juvViolenceModel <- lm(riskViolenceDecileScore ~ juvCount, data=recidTraining2)
+p20 <- jjplotPoint(data = recidTraining2, x = juvCount, y = riskViolenceDecileScore, model = juvScoreModel, color = recidCat)
+
+
+logJuvViolenceModel <- lm(riskViolenceDecileScore ~ logJuvCount, data=recidTraining2)
+p21 <- jjplotPoint(data = recidTraining2, x = logJuvCount, y = riskViolenceDecileScore, model = logJuvScoreModel, color = recidCat)
+
+p20 + p21
+
+## Priors Count vs riskViolenceDecileScore
+
+priorsScoreModel <- lm(riskViolenceDecileScore ~ priorsCount, data=recidTraining2)
+p22<- jjplotPoint(data = recidTraining2, x = priorsCount, y = riskViolenceDecileScore, model = priorsScoreModel, color = recidCat)
+
+
+logPriorsScoreModel <- lm(riskViolenceDecileScore ~ logPriorsCount, data=recidTraining2)
+p23 <- jjplotPoint(data = recidTraining2, x = logPriorsCount, y = riskViolenceDecileScore, model = logPriorsScoreModel, color = recidCat)
+
+p22 + p23
+
+## Age vs riskViolenceDecileScore
+
+ageScoreModel <- lm(riskViolenceDecileScore ~ age, data=recidTraining2)
+jjplotPoint(data = recidTraining2, x = age, y = riskViolenceDecileScore, model = ageScoreModel, color = recidCat)
+
+## Age Cat vs riskViolenceDecileScore
+ggplot(data=recidTraining2, aes(riskViolenceDecileScore, fill = recidCat)) +
+  geom_density(alpha=.4) +
+  facet_wrap(~ ageCat)
+
+## Race vs riskViolenceDecileScore
+
+ggplot(data=recidTraining2, aes(riskViolenceDecileScore, fill = recidCat)) +
+  geom_density(alpha=.4) +
+  facet_wrap(~ race)
+
+## Charge Degree vs riskViolenceDecileScore
+
+ggplot(data=recidTraining2, aes(riskViolenceDecileScore, fill = recidCat)) +
+  geom_density(alpha=.4) +
+  facet_wrap(~ chargeDegree)
+
+## Best Subset
+
+violenceSubsetModel <- lm(riskViolenceDecileScore ~ logPriorsCount + priorsCount + age + chargeDegree + logDaysInJail + daysInJail + sex + race, data = recidTesting2)
+
+(olsSubset <- ols_step_best_subset(violenceSubsetModel))
+
+violenceFinalModel <- lm(riskViolenceDecileScore ~ priorsCount + age + logDaysInJail + race, data=recidTraining2)
+
+
+violenceTestingPredicts <- predict.lm(scoreFinalModel, newdata=recidTesting2)
+
+RMSE(scoreTestingPredicts,recidTesting2$riskViolenceDecileScore)
+
+
+# Calculating Mystery Data
+
+recidMystery <- read.csv("datasets/Project3Mystery100.csv")
+
+recidMystery2 <- recidMystery %>% 
+  rename(
+    dayBefScreenArrest = days_b_screening_arrest,
+    jailIn = c_jail_in,
+    jailOut = c_jail_out,
+    daysFromCompas = c_days_from_compas,
+    chargeDegree = c_charge_degree,
+    chargeDesc = c_charge_desc,
+    riskRecidScreeningDate = RiskRecidScreeningDate,
+  ) %>% 
+  mutate(
+    dob = as_date(dmy(dob)),
+    ageCat = factor(as.factor(ageCat),levels=c("Less than 25","25 - 45","Greater than 45")),
+    race = factor(as.factor(race),levels=c("white","black","hispanic","other")),
+    jailIn = as.Date(dmy_hm(jailIn, tz = "EST")),
+    jailOut = as.Date(dmy_hm(jailOut, tz = "EST")),
+    chargeDegree = as.factor(gsub("[()]","",chargeDegree)),
+    riskRecidScreeningDate = as_date(dmy(riskRecidScreeningDate)),
+  ) %>% 
+  select(-dob) %>% 
+  filter((!is.na(jailIn) | !is.na(jailOut)))
+
+recidMystery3 <- recidMystery2 %>% 
+  mutate(
+    daysInJail = as.numeric(difftime(jailOut,jailIn,unit="days")+1),
+    logDaysInJail = log10(daysInJail),
+    logPriorsCount = log10(priorsCount+0.1),
+    juvCount = juvFelonyCount + juvMisdemeanerCount + juvOtherCount,
+    logJuvCount = log10(juvCount+0.1)
+  )
+
+willRecidivate <- predict.lm(finalModel, newdata=recidMystery3)
+
+predictedRecidScore <- predict.lm(scoreFinalModel, newdata=recidMystery3)
+
+predictedViolenceScore <-  predict.lm(violenceFinalModel, newdata=recidMystery3)
+
+predictedDataframe <- cbind(recidMystery,willRecidivate,predictedRecidScore,predictedViolenceScore) %>% 
+  select(personID,willRecidivate,predictedRecidScore,predictedViolenceScore)
+
+write.csv(predictedDataframe,"datasets/PredictedMystery.csv")
 
