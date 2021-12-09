@@ -373,109 +373,109 @@ logMatrixTest <- table(logPredictTest$isRecid,logPredictTest$prediction)
 
 (checkModel(recidTesting,logMatrixTest))
 
-## F*ck Model
+## Recid Model
 
-fuckModel <- glm(isRecid ~ sex + age + logPriorsCount + daysInJail, data=recidTraining, family = binomial)
+recidModel <- glm(isRecid ~ sex + age + logPriorsCount + daysInJail, data=recidTraining, family = binomial)
 
-fuckPredictTrain <- getPredict(recidTraining, fuckModel) %>% 
+recidPredictTrain <- getPredict(recidTraining, recidModel) %>% 
   mutate(prediction = ifelse(recidPredict < 0.5, "Did Not Reaffend", "Reaffended"))
-fuckMatrixTrain <- table(fuckPredictTrain$isRecid,fuckPredictTrain$prediction)
+recidMatrixTrain <- table(recidPredictTrain$isRecid,recidPredictTrain$prediction)
 
-fuckPredictTest <- getPredict(recidTesting, fuckModel) %>% 
+recidPredictTest <- getPredict(recidTesting, recidModel) %>% 
   mutate(prediction = ifelse(recidPredict < 0.5, "Did Not Reaffend", "Reaffended"))
-fuckMatrixTest <- table(fuckPredictTest$isRecid,fuckPredictTest$prediction)
+recidMatrixTest <- table(recidPredictTest$isRecid,recidPredictTest$prediction)
 
-(checkModel(recidTraining,fuckMatrixTrain))
+(checkModel(recidTraining,recidMatrixTrain))
 
-(checkModel(recidTesting,fuckMatrixTest))
+(checkModel(recidTesting,recidMatrixTest))
 
 recidMysteryBox <- read.csv("datasets/Project3Mystery100.csv")
 
-## F*ck 2 Model
+## Recid 2 Model
 
-fuck2Model <- glm(isRecid ~ age + logPriorsCount + daysInJail, data=recidTraining, family = binomial)
+recid2Model <- glm(isRecid ~ age + logPriorsCount + daysInJail, data=recidTraining, family = binomial)
 
-fuck2PredictTrain <- getPredict(recidTraining, fuck2Model) %>% 
+recid2PredictTrain <- getPredict(recidTraining, recid2Model) %>% 
   mutate(prediction = ifelse(recidPredict < 0.5, "Did Not Reaffend", "Reaffended"))
-fuck2MatrixTrain <- table(fuck2PredictTrain$isRecid,fuck2PredictTrain$prediction)
+recid2MatrixTrain <- table(recid2PredictTrain$isRecid,recid2PredictTrain$prediction)
 
-fuck2PredictTest <- getPredict(recidTesting, fuck2Model) %>% 
+recid2PredictTest <- getPredict(recidTesting, recid2Model) %>% 
   mutate(prediction = ifelse(recidPredict < 0.5, "Did Not Reaffend", "Reaffended"))
-fuck2MatrixTest <- table(fuck2PredictTest$isRecid,fuck2PredictTest$prediction)
+recid2MatrixTest <- table(recid2PredictTest$isRecid,recid2PredictTest$prediction)
 
-(checkModel(recidTraining,fuck2MatrixTrain))
+(checkModel(recidTraining,recid2MatrixTrain))
 
-(checkModel(recidTesting,fuck2MatrixTest))
+(checkModel(recidTesting,recid2MatrixTest))
 
-## F*ck 3 Model
+## Recid 3 Model
 
-fuck4Model <- glm(isRecid ~ age + logPriorsCount, data=recidTraining, family = binomial)
+recid4Model <- glm(isRecid ~ age + logPriorsCount, data=recidTraining, family = binomial)
 
-fuck3PredictTrain <- getPredict(recidTraining, fuck3Model) %>% 
+recid3PredictTrain <- getPredict(recidTraining, recid3Model) %>% 
   mutate(prediction = ifelse(recidPredict < 0.5, "Did Not Reaffend", "Reaffended"))
-fuck3MatrixTrain <- table(fuck3PredictTrain$isRecid,fuck3PredictTrain$prediction)
+recid3MatrixTrain <- table(recid3PredictTrain$isRecid,recid3PredictTrain$prediction)
 
-fuck3PredictTest <- getPredict(recidTesting, fuck3Model) %>% 
+recid3PredictTest <- getPredict(recidTesting, recid3Model) %>% 
   mutate(prediction = ifelse(recidPredict < 0.5, "Did Not Reaffend", "Reaffended"))
-fuck3MatrixTest <- table(fuck3PredictTest$isRecid,fuck3PredictTest$prediction)
+recid3MatrixTest <- table(recid3PredictTest$isRecid,recid3PredictTest$prediction)
 
-(checkModel(recidTraining,fuck3MatrixTrain))
+(checkModel(recidTraining,recid3MatrixTrain))
 
-(checkModel(recidTesting,fuck3MatrixTest))
+(checkModel(recidTesting,recid3MatrixTest))
 
-## F*ck 4 Model
+## Recid 4 Model
 
-fuck4Model <- glm(isRecid ~ age + sex + logPriorsCount, data=recidTraining, family = binomial)
+recid4Model <- glm(isRecid ~ age + sex + logPriorsCount, data=recidTraining, family = binomial)
 
-fuck4PredictTrain <- getPredict(recidTraining, fuck4Model) %>% 
+recid4PredictTrain <- getPredict(recidTraining, recid4Model) %>% 
   mutate(prediction = ifelse(recidPredict < 0.5, "Did Not Reaffend", "Reaffended"))
-fuck4MatrixTrain <- table(fuck4PredictTrain$isRecid,fuck4PredictTrain$prediction)
+recid4MatrixTrain <- table(recid4PredictTrain$isRecid,recid4PredictTrain$prediction)
 
-fuck4PredictTest <- getPredict(recidTesting, fuck4Model) %>% 
+recid4PredictTest <- getPredict(recidTesting, recid4Model) %>% 
   mutate(prediction = ifelse(recidPredict < 0.5, "Did Not Reaffend", "Reaffended"))
-fuck4MatrixTest <- table(fuck4PredictTest$isRecid,fuck4PredictTest$prediction)
+recid4MatrixTest <- table(recid4PredictTest$isRecid,recid4PredictTest$prediction)
 
-(checkModel(recidTraining,fuck4MatrixTrain))
+(checkModel(recidTraining,recid4MatrixTrain))
 
-(checkModel(recidTesting,fuck4MatrixTest))
+(checkModel(recidTesting,recid4MatrixTest))
 
 recidMysteryBox <- read.csv("datasets/Project3Mystery100.csv")
 
-## F*ck 5 Model
+## Recid 5 Model
 
-fuck5Model <- glm(isRecid ~ age + priorsCount, data=recidTraining, family = binomial)
+recid5Model <- glm(isRecid ~ age + priorsCount, data=recidTraining, family = binomial)
 
-fuck5PredictTrain <- getPredict(recidTraining, fuck5Model) %>% 
+recid5PredictTrain <- getPredict(recidTraining, recid5Model) %>% 
   mutate(prediction = ifelse(recidPredict < 0.5, "Did Not Reaffend", "Reaffended"))
-fuck5MatrixTrain <- table(fuck5PredictTrain$isRecid,fuck5PredictTrain$prediction)
+recid5MatrixTrain <- table(recid5PredictTrain$isRecid,recid5PredictTrain$prediction)
 
-fuck5PredictTest <- getPredict(recidTesting, fuck5Model) %>% 
+recid5PredictTest <- getPredict(recidTesting, recid5Model) %>% 
   mutate(prediction = ifelse(recidPredict < 0.5, "Did Not Reaffend", "Reaffended"))
-fuck5MatrixTest <- table(fuck5PredictTest$isRecid,fuck5PredictTest$prediction)
+recid5MatrixTest <- table(recid5PredictTest$isRecid,recid5PredictTest$prediction)
 
-(checkModel(recidTraining,fuck5MatrixTrain))
+(checkModel(recidTraining,recid5MatrixTrain))
 
-(checkModel(recidTesting,fuck5MatrixTest))
+(checkModel(recidTesting,recid5MatrixTest))
 
-## F*ck 6 Model
+## Recid 6 Model
 
-fuck6Model <- glm(isRecid ~ age + logPriorsCount + logDaysInJail, data=recidTraining, family = binomial)
+recid6Model <- glm(isRecid ~ age + logPriorsCount + logDaysInJail, data=recidTraining, family = binomial)
 
-fuck6PredictTrain <- getPredict(recidTraining, fuck6Model) %>% 
+recid6PredictTrain <- getPredict(recidTraining, recid6Model) %>% 
   mutate(prediction = ifelse(recidPredict < 0.5, "Did Not Reaffend", "Reaffended"))
-fuck6MatrixTrain <- table(fuck6PredictTrain$isRecid,fuck6PredictTrain$prediction)
+recid6MatrixTrain <- table(recid6PredictTrain$isRecid,recid6PredictTrain$prediction)
 
-fuck6PredictTest <- getPredict(recidTesting, fuck6Model) %>% 
+recid6PredictTest <- getPredict(recidTesting, recid6Model) %>% 
   mutate(prediction = ifelse(recidPredict < 0.5, "Did Not Reaffend", "Reaffended"))
-fuck6MatrixTest <- table(fuck6PredictTest$isRecid,fuck6PredictTest$prediction)
+recid6MatrixTest <- table(recid6PredictTest$isRecid,recid6PredictTest$prediction)
 
-(checkModel(recidTraining,fuck6MatrixTrain))
+(checkModel(recidTraining,recid6MatrixTrain))
 
-(checkModel(recidTesting,fuck6MatrixTest))
+(checkModel(recidTesting,recid6MatrixTest))
 
 ## Final Model
 
-finalModel <-  fuck6Model
+finalModel <-  recid6Model
 
 # Recid Score Model & Visuals
 
@@ -489,41 +489,85 @@ recidTesting2 <-  testingTraining2$testing
 
 ## Days in Jail vs riskRecidDecileScore
 
-daysScoreModel <- lm(riskRecidDecileScore ~ daysInJail, data=recidTraining2)
-p18 <- jjplotPoint(data = recidTraining2, x = daysInJail, y = riskRecidDecileScore, model = daysScoreModel, color = recidCat)
 
+p18 <- ggplot(data = recidTraining2, aes(x = daysInJail, y = riskRecidDecileScore, fill= recidCat)) +
+  geom_boxplot() +
+  labs (
+    x="Days in Jail",
+    y="Risk Recidivate Score",
+    fill = "Recidivated?"
+  ) + 
+  coord_flip()
+  
 
-logDaysScoreModel <- lm(riskRecidDecileScore ~ logDaysInJail, data=recidTraining2)
-p19 <- jjplotPoint(data = recidTraining2, x = logDaysInJail, y = riskRecidDecileScore, model = logDaysScoreModel, color = recidCat)
+p19 <- ggplot(data = recidTraining2, aes(x = daysInJail, y = riskRecidDecileScore, fill= recidCat)) +
+  geom_boxplot() +
+  labs (
+    x="log10(Days in Jail)",
+    y="Risk Recidivate Score",
+    fill = "Recidivated?"
+  ) + 
+  coord_flip()
 
-p18 + p19
+p18 / p19 + plot_annotation(title = "Days in Jail") + plot_layout(guides = 'collect')
 
 ## Juvenile Count vs riskRecidDecileScore
 
-juvScoreModel <- lm(riskRecidDecileScore ~ juvCount, data=recidTraining2)
-p20 <- jjplotPoint(data = recidTraining2, x = juvCount, y = riskRecidDecileScore, model = juvScoreModel, color = recidCat)
+p20 <- ggplot(data = recidTraining2, aes(x = juvCount, y = riskRecidDecileScore, fill= recidCat)) +
+  geom_boxplot() +
+  labs (
+    x="Juvenile Count",
+    y="Risk Recidivate Score",
+    fill = "Recidivated?"
+  ) + 
+  coord_flip()
 
 
-logJuvScoreModel <- lm(riskRecidDecileScore ~ logJuvCount, data=recidTraining2)
-p21 <- jjplotPoint(data = recidTraining2, x = logJuvCount, y = riskRecidDecileScore, model = logJuvScoreModel, color = recidCat)
+p21 <- ggplot(data = recidTraining2, aes(x = logJuvCount, y = riskRecidDecileScore, fill= recidCat)) +
+  geom_boxplot() +
+  labs (
+    x="log10(Juvenile Count + 0.01)",
+    y="Risk Recidivate Score",
+    fill = "Recidivated?"
+  ) + 
+  coord_flip()
 
-p20 + p21
+p20 / p21 + plot_annotation(title = "Juvenile Count") + plot_layout(guides = 'collect')
 
 ## Priors Count vs riskRecidDecileScore
 
-priorsScoreModel <- lm(riskRecidDecileScore ~ priorsCount, data=recidTraining2)
-p22<- jjplotPoint(data = recidTraining2, x = priorsCount, y = riskRecidDecileScore, model = priorsScoreModel, color = recidCat)
+p22 <- ggplot(data = recidTraining2, aes(x = priorsCount, y = riskRecidDecileScore, fill= recidCat)) +
+  geom_boxplot() +
+  labs (
+    x="Priors Count",
+    y="Risk Recidivate Score",
+    fill = "Recidivated?"
+  ) + 
+  coord_flip()
 
 
-logPriorsScoreModel <- lm(riskRecidDecileScore ~ logPriorsCount, data=recidTraining2)
-p23 <- jjplotPoint(data = recidTraining2, x = logPriorsCount, y = riskRecidDecileScore, model = logPriorsScoreModel, color = recidCat)
+p23 <- ggplot(data = recidTraining2, aes(x = logPriorsCount, y = riskRecidDecileScore, fill= recidCat)) +
+  geom_boxplot() +
+  labs (
+    x="log10(Priors Count + 0.01)",
+    y="Risk Recidivate Score",
+    fill = "Recidivated?"
+  ) + 
+  coord_flip()
 
-p22 + p23
+p22 / p23 + plot_annotation(title = "Priors Count") + plot_layout(guides = 'collect')
 
 ## Age vs riskRecidDecileScore
 
-ageScoreModel <- lm(riskRecidDecileScore ~ age, data=recidTraining2)
-jjplotPoint(data = recidTraining2, x = age, y = riskRecidDecileScore, model = ageScoreModel, color = recidCat)
+ggplot(data = recidTraining2, aes(x = age, y = riskRecidDecileScore, fill= recidCat)) +
+  geom_boxplot() +
+  labs (
+    x="Age",
+    y="Risk Recidivate Score",
+    fill = "Recidivated?",
+    title = "Age"
+  ) + 
+  coord_flip()
 
 ## Age Cat vs riskRecidDecileScore
 ggplot(data=recidTraining2, aes(riskRecidDecileScore, fill = recidCat)) +
@@ -563,45 +607,85 @@ RMSE(scoreTestingPredicts,recidTesting2$riskRecidDecileScore)
 
 ## Days in Jail vs riskViolenceDecileScore
 
-ggplot(recidTraining2, aes(x = daysInJail, fill= recidCat)) +
-  geom_density(alpha=.4) +
-  facet_wrap(~riskViolenceDecileScore)
 
-daysViolenceModel <- lm(riskViolenceDecileScore ~ daysInJail, data=recidTraining2)
-p24 <- jjplotPoint(data = recidTraining2, x = daysInJail, y = riskViolenceDecileScore, model = daysViolenceModel, color = recidCat)
+p24 <- ggplot(data = recidTraining2, aes(x = daysInJail, y = riskViolenceDecileScore, fill= recidCat)) +
+  geom_boxplot() +
+  labs (
+    x="Days in Jail",
+    y="Risk Violence Score",
+    fill = "Recidivated?"
+  ) + 
+  coord_flip()
 
 
-logDaysViolenceModel <- lm(riskViolenceDecileScore ~ logDaysInJail, data=recidTraining2)
-p25 <- jjplotPoint(data = recidTraining2, x = logDaysInJail, y = riskViolenceDecileScore, model = logDaysViolenceModel, color = recidCat)
+p25<- ggplot(data = recidTraining2, aes(x = daysInJail, y = riskViolenceDecileScore, fill= recidCat)) +
+  geom_boxplot() +
+  labs (
+    x="log10(Days in Jail)",
+    y="Risk Violence Score",
+    fill = "Recidivated?"
+  ) + 
+  coord_flip()
 
-p24 + p25
+p24 / p25 + plot_annotation(title = "Days in Jail") + plot_layout(guides = 'collect')
 
 ## Juvenile Count vs riskViolenceDecileScore
 
-juvViolenceModel <- lm(riskViolenceDecileScore ~ juvCount, data=recidTraining2)
-p20 <- jjplotPoint(data = recidTraining2, x = juvCount, y = riskViolenceDecileScore, model = juvScoreModel, color = recidCat)
+p26 <- ggplot(data = recidTraining2, aes(x = juvCount, y = riskViolenceDecileScore, fill= recidCat)) +
+  geom_boxplot() +
+  labs (
+    x="Juvenile Count",
+    y="Risk Violence Score",
+    fill = "Recidivated?"
+  ) + 
+  coord_flip()
 
 
-logJuvViolenceModel <- lm(riskViolenceDecileScore ~ logJuvCount, data=recidTraining2)
-p21 <- jjplotPoint(data = recidTraining2, x = logJuvCount, y = riskViolenceDecileScore, model = logJuvScoreModel, color = recidCat)
+p27 <- ggplot(data = recidTraining2, aes(x = logJuvCount, y = riskViolenceDecileScore, fill= recidCat)) +
+  geom_boxplot() +
+  labs (
+    x="log10(Juvenile Count + 0.01)",
+    y="Risk Violence Score",
+    fill = "Recidivated?"
+  ) + 
+  coord_flip()
 
-p20 + p21
+p26 / p27 + plot_annotation(title = "Juvenile Count") + plot_layout(guides = 'collect')
 
 ## Priors Count vs riskViolenceDecileScore
 
-priorsScoreModel <- lm(riskViolenceDecileScore ~ priorsCount, data=recidTraining2)
-p22<- jjplotPoint(data = recidTraining2, x = priorsCount, y = riskViolenceDecileScore, model = priorsScoreModel, color = recidCat)
+p28 <- ggplot(data = recidTraining2, aes(x = priorsCount, y = riskViolenceDecileScore, fill= recidCat)) +
+  geom_boxplot() +
+  labs (
+    x="Priors Count",
+    y="Risk Violence Score",
+    fill = "Recidivated?"
+  ) + 
+  coord_flip()
 
 
-logPriorsScoreModel <- lm(riskViolenceDecileScore ~ logPriorsCount, data=recidTraining2)
-p23 <- jjplotPoint(data = recidTraining2, x = logPriorsCount, y = riskViolenceDecileScore, model = logPriorsScoreModel, color = recidCat)
+p29 <- ggplot(data = recidTraining2, aes(x = logPriorsCount, y = riskViolenceDecileScore, fill= recidCat)) +
+  geom_boxplot() +
+  labs (
+    x="log10(Priors Count + 0.01)",
+    y="Risk Violence Score",
+    fill = "Recidivated?"
+  ) + 
+  coord_flip()
 
-p22 + p23
+p28 / p29 + plot_annotation(title = "Priors Count") + plot_layout(guides = 'collect')
 
 ## Age vs riskViolenceDecileScore
 
-ageScoreModel <- lm(riskViolenceDecileScore ~ age, data=recidTraining2)
-jjplotPoint(data = recidTraining2, x = age, y = riskViolenceDecileScore, model = ageScoreModel, color = recidCat)
+ggplot(data = recidTraining2, aes(x = age, y = riskViolenceDecileScore, fill= recidCat)) +
+  geom_boxplot() +
+  labs (
+    x="Age",
+    y="Risk Violence Score",
+    fill = "Recidivated?",
+    title = "Age"
+  ) + 
+  coord_flip() recidTraining2, x = age, y = riskViolenceDecileScore, model = ageScoreModel, color = recidCat)
 
 ## Age Cat vs riskViolenceDecileScore
 ggplot(data=recidTraining2, aes(riskViolenceDecileScore, fill = recidCat)) +
@@ -669,7 +753,8 @@ recidMystery3 <- recidMystery2 %>%
     logJuvCount = log10(juvCount+0.1)
   )
 
-willRecidivate <- predict.lm(finalModel, newdata=recidMystery3)
+willRecidivate <- ifelse(predict.glm(finalModel, newdata=recidMystery3, type="response") > .5, 1, 0)
+  
 
 predictedRecidScore <- predict.lm(scoreFinalModel, newdata=recidMystery3)
 
