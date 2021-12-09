@@ -685,7 +685,7 @@ ggplot(data = recidTraining2, aes(x = age, y = riskViolenceDecileScore, fill= re
     fill = "Recidivated?",
     title = "Age"
   ) + 
-  coord_flip() recidTraining2, x = age, y = riskViolenceDecileScore, model = ageScoreModel, color = recidCat)
+  coord_flip()
 
 ## Age Cat vs riskViolenceDecileScore
 ggplot(data=recidTraining2, aes(riskViolenceDecileScore, fill = recidCat)) +
@@ -712,10 +712,9 @@ violenceSubsetModel <- lm(riskViolenceDecileScore ~ logPriorsCount + priorsCount
 
 violenceFinalModel <- lm(riskViolenceDecileScore ~ priorsCount + age + logDaysInJail + race, data=recidTraining2)
 
+violenceTestingPredicts <- predict.lm(violenceFinalModel, newdata=recidTesting2)
 
-violenceTestingPredicts <- predict.lm(scoreFinalModel, newdata=recidTesting2)
-
-RMSE(scoreTestingPredicts,recidTesting2$riskViolenceDecileScore)
+RMSE(violenceTestingPredicts,recidTesting2$riskViolenceDecileScore)
 
 
 # Calculating Mystery Data
@@ -757,8 +756,10 @@ willRecidivate <- ifelse(predict.glm(finalModel, newdata=recidMystery3, type="re
   
 
 predictedRecidScore <- predict.lm(scoreFinalModel, newdata=recidMystery3)
+predictedRecidScore <-  ifelse(predictedRecidScore < 1, 1 , round(predictedRecidScore,0))
 
 predictedViolenceScore <-  predict.lm(violenceFinalModel, newdata=recidMystery3)
+predictedViolenceScore <-  ifelse(predictedViolenceScore < 1, 1 , round(predictedViolenceScore,0))
 
 predictedDataframe <- cbind(recidMystery,willRecidivate,predictedRecidScore,predictedViolenceScore) %>% 
   select(personID,willRecidivate,predictedRecidScore,predictedViolenceScore)
