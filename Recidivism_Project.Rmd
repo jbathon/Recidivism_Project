@@ -232,7 +232,15 @@ recidTesting <-  testingTraining$testing
 
 In our data cleaning, we forced date variables to be dates and factor variables to be factors. Then we engineered a few categories in the data - some for convenience and some for purpose. These include the following: `daysInJail` (difference between entry and exit of jail), `logDaysInJail` (log base 10 of `daysInJail`), `logPriorsCount` (log base 10 of `priorsCount`), `juvCount` (total of all juvenile crime categories), and `logJuvCount` (log base 10 of `juvCount`). We then remove `name`, `dob`, and `race` because `name` is irrelevant to recidivism, `dob` is covered by the included `age` category, and `race` is not fair to include in a predictive model as there is no definitive difference aside from visually between two people of different races.<br><br>
 
-## Figure 1
+# Task 2: Statistical Modeling!
+
+In this section we will be creating three different models based on the data set given and now refined. Our first model will be a logistic model to predict whether or not an inmate will recidivate within two years of their release. Our second model will predict the risk of recidivism score. This score was given by a written test given to prisoners and was computed by a third-party company that uses a black-box algorithm to compute the value of `riskRecidScoreLevel`. Our third model will predict the violence score of an inmate. This was once more calculated from a test administered to inmates and was computed by a third-party company using a black-box algorithm.
+
+## Logistic Regression: Predicting Recidivism
+
+This is our first model. It is a logistic regression model which predicts whether or not an inmate will recidivate within two years of being released. The following plots are some data visualization relevant to this model.
+
+### Figure 1
 
 ```{r dayInJailViz}
 ### DaysInJail Plot
@@ -277,7 +285,7 @@ p1 + p2 + p3 + p4 +
 
 Figure one illustrates that a higher proportion of inmates who spent less time in prison when compared to the proportion of prisoners likely to reoffend who spent a longer duration in jail. This is shown more clearly in the right two plots as the left two plots are so heavily skewed left that they are not very readable. The left two plots are included to demonstrate that taking the log base 10 of `daysInJail` eliminates much of the leftward skew therefore being a more sensitive predictor to be included within a model than simply `daysInJail`.
 
-## Figure 2
+### Figure 2
 
 ```{r}
 ### Priors Count
@@ -316,7 +324,7 @@ p5 + p6 + p7 + p8 + plot_annotation(title = "Priors Counts", theme=theme_custom(
 
 Figure two illustrates that taking the log base 10 of the number of prior offenses (plus 0.1 to avoid taking the log10 of 0) improves the sensitivity of the predictions made with that variable as well as reducing the number of outliers included in the data which means the model will better predict whether or not an inmate will reoffend after being released. For this reason, we will be using the log base 10 of prior count as opposed to just `priorCount`.
 
-## Figure 3
+### Figure 3
 
 ```{r}
 ### Juvenile Priors Count
@@ -353,8 +361,9 @@ p12 <- recidTraining %>%
 p9 + p10 + p11 + p12 + plot_annotation(title = "Juvenile Priors Counts", theme=theme_custom()) + plot_layout(guides = 'collect')
 ```
 
+Figure three shows that we can rule out prior crimes committed in juvenile years. There was not enough relevant data in these plots to include the variable or the log base 10 of the variable; therefore, this plot is important to include as a part of refining our model later on.
 
-## Figure 4
+### Figure 4
 
 ```{r}
 ### Age
@@ -379,8 +388,9 @@ p14 <- recidTraining %>%
 p13 / p14 + plot_annotation(theme=theme_custom())
 ```
 
+Figure 4 shows that age is a factor in whether or not a person will recidivate. 
 
-## Figure 5
+### Figure 5
 
 ```{r}
 ### Sex
@@ -396,7 +406,7 @@ ggplot(data=recidTraining,aes(x=sex, fill=fct_recode(as.factor(isRecid),Yes = "1
 ```
 
 
-## Figure 6
+### Figure 6
 
 ```{r}
 ### ChargeDegree
@@ -411,7 +421,7 @@ ggplot(data=recidTraining,aes(x=chargeDegree, fill=fct_recode(as.factor(isRecid)
   theme_custom()
 ```
 
-## Colinearity Checking
+### Colinearity Checking
 
 ```{r}
 ### Colinearity Check
