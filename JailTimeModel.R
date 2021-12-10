@@ -3,6 +3,7 @@ library(tidyverse)
 library(lubridate)
 library(olsrr)
 library(stringr)
+library(ggfortify)
 library(patchwork)
 
 recid <- read.csv("datasets/Project3Sample4000.csv")
@@ -124,10 +125,15 @@ jjplotDensity <- function(data, x, fill, color) {
 
 ## Days in Jail vs Priors Count
 
-proirsModel <- lm(logDaysInJail ~ priorsCount, jailTimeTraining)
+proirsModel <- lm(logDaysInJail ~ logPriorsCount, jailTimeTraining)
 
-jjplotLogPoint(data = jailTimeTraining,x = priorsCount,y=daysInJail,color=recidCat,model=proirsModel) +
-  theme(legend.position = "none")
+jjplotLogPoint(data = jailTimeTraining,x = logPriorsCount,y=daysInJail,color=recidCat,model=proirsModel) +
+  theme(legend.position = "none") +
+  labs(
+    title="Days in Jail vs log10(Priors Count)",
+    x="log10(Priors Count)",
+    y="Days in Jail"
+  )
 
 ## Days in Jail vs Age
 
@@ -152,16 +158,24 @@ jjplotLogPoint(data = jailTimeTraining,x = chargeDescCount,y=daysInJail,color=re
 ## Days in Jail vs Charge Degree
 
 jjplotDensity(data = jailTimeTraining, x=logDaysInJail,fill=recidCat) +
-  facet_wrap(~chargeDegree)
+  facet_wrap(~chargeDegree) +
+  labs(
+    title = "Charge Degree",
+    x="Log10(Day In Jail)"
+  )
 
 ## Days in Jail vs Sex
 
 jjplotDensity(data = jailTimeTraining, x=logDaysInJail,fill=recidCat) +
-  facet_wrap(~sex)
+  facet_wrap(~sex) +
+  labs(
+    title = "Sex",
+    x="Log10(Days In Jail)"
+  )
 
 # Best Subset
 
-jailTimeEverythingModel <- lm(logDaysInJail ~ sex + age + chargeDegree + priorsCount + juvCount + logPriorsCount + logJuvCount + chargeDescCount + logChargeDescCount, data=jailTimeTraining)
+jailTimeEverythingModel <- lm(logDaysInJail ~ sex + age + chargeDegree + priorsCount + juvCount + logPriorsCount + logJuvCount + chargeDescCount + logChargeDescCount + riskRecidDecileScore + riskViolenceDecileScore, data=jailTimeTraining)
 ols_step_best_subset(jailTimeEverythingModel)
 
 RMSE <- function(predict, obs) {
@@ -180,5 +194,7 @@ RMSE(jailTimeTrainingPredict,jailTimeTraining$daysInJail)
 jailTimeTestingPredict <- 10^predict.lm(bestJailTimeModel,newdata = jailTimeTesting)
 
 RMSE(jailTimeTestingPredict,jailTimeTesting$daysInJail)
+
+autoplot(jailTimeEverythingModel, 1:2)
 
 
