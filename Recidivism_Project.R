@@ -251,7 +251,7 @@ p13 / p14
 
 ### Sex
 
-ggplot(data=recidTraining,aes(x=sex, fill=fct_recode(as.factor(isRecid),Yes = "1", No = "0"))) +
+ggplot(data=recidTraining,aes(x=fct_infreq(sex), fill=fct_recode(as.factor(isRecid),Yes = "1", No = "0"))) +
   geom_bar(position = "dodge") +
   labs(
     title="Sex",
@@ -261,7 +261,7 @@ ggplot(data=recidTraining,aes(x=sex, fill=fct_recode(as.factor(isRecid),Yes = "1
 
 ### ChargeDegree
 
-ggplot(data=recidTraining,aes(x=chargeDegree, fill=fct_recode(as.factor(isRecid),Yes = "1", No = "0"))) +
+ggplot(data=recidTraining,aes(x=fct_infreq(chargeDegree), fill=fct_recode(as.factor(isRecid),Yes = "1", No = "0"))) +
   geom_bar(position = "dodge") +
   labs(
     title="Charge Degree",
@@ -1255,7 +1255,7 @@ p55 <- ggplot(femaleTraining, aes(x = logPriorsCount, y = age, color = fct_recod
 
 p53 / (p54 + p55) + plot_annotation(title = "Colinearity Check") + plot_layout(guides = 'collect')
 
-## female Model
+## Female Model
 
 femaleModel <- glm(isRecid ~ age + priorsCount, data=femaleTraining, family = binomial)
 
