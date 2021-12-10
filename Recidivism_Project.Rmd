@@ -414,7 +414,7 @@ Figure 4 shows that age is a factor in whether or not a person will reoffend. Sh
 ```{r fig5}
 ### Sex
 
-ggplot(data=recidTraining,aes(x=sex, fill=fct_recode(as.factor(isRecid),Yes = "1", No = "0"))) +
+ggplot(data=recidTraining,aes(x=fct_infreq(sex), fill=fct_recode(as.factor(isRecid),Yes = "1", No = "0"))) +
   geom_bar(position = "dodge") +
   labs(
     title="Sex",
@@ -431,7 +431,7 @@ Figure 5 takes into account sex as a factor determining reoffending rates. This 
 ```{r fig6}
 ### ChargeDegree
 
-ggplot(data=recidTraining,aes(x=chargeDegree, fill=fct_recode(as.factor(isRecid),Yes = "1", No = "0"))) +
+ggplot(data=recidTraining,aes(x=fct_infreq(chargeDegree), fill=fct_recode(as.factor(isRecid),Yes = "1", No = "0"))) +
   geom_bar(position = "dodge") +
   labs(
     title="Charge Degree",
