@@ -161,6 +161,12 @@ getPredict <- function(data, model) {
   
   return(dataWithPredictions)
 }
+
+# RMSE calculation given two lists of numbers
+RMSE <- function(predict, obs) {
+  RMSE <- sqrt(mean((predict - obs)^2, na.rm = TRUE))
+  return(RMSE)
+}
 ```
 
 ```{r dataset}
@@ -173,7 +179,7 @@ recidMysteryBox <- read.csv("datasets/Project3Mystery100.csv")
 
 # Introduction to the Project
 
-<b><i>Recidivism</i></b> is a term used within the criminal justice system which means "the tendency of a criminal to reoffend after serving a sentence in a disciplinary institution." The data we will be analyzing is from Broward County, Florida and includes recidivism predictions from two proprietary tests given to inmates. The goal of this analysis is to, based on various factors of an inmate, predict whether or not they will reoffend within two years of being released. <br><br>
+<b><i>Recidivism</i></b> is a term used within the criminal justice system which means "the tendency of a criminal to reoffend after serving a sentence in a disciplinary institution." The data we will be analyzing is from Broward County, Florida and includes recidivism predictions from two proprietary tests that are given to inmates. These predictions are in the form of decile scores which are attributed to an inmates recidivation likelihood and violence level. The goal of this analysis is to, based on various factors of an inmate, predict whether or not they will reoffend within two years of being released as well as enforce or debunk the tests used to classify this from those proprietary organizations. <br><br>
 
 By the end of this analysis, we hope to have an accurate classification model for whether or not a person is likely to reoffend as well as have the ability to discuss the accuracy of the model in detail.<br><br>
 
@@ -230,32 +236,24 @@ recid4 <- recid3 %>%
     -race
   )
 
-## Testing Training Split for First Logistic Regression Model
+## Testing Training Split
 
 testingTraining <- createTraining(recid4, seed=8675309)
 
 recidTraining <- testingTraining$training
 
 recidTesting <-  testingTraining$testing
-
-## Testing Training Split for Second Logistic Regression Model
-
-testingTraining2 <- createTraining(recid3, seed="859")
-
-recidTraining2 <- testingTraining2$training
-
-recidTesting2 <-  testingTraining2$testing
 ```
 
-In our data cleaning, we forced date variables to be dates and factor variables to be factors. Then we engineered a few categories in the data - some for convenience and some for purpose. These include the following: `daysInJail` (difference between entry and exit of jail), `logDaysInJail` (log base 10 of `daysInJail`), `logPriorsCount` (log base 10 of `priorsCount`), `juvCount` (total of all juvenile crime categories), and `logJuvCount` (log base 10 of `juvCount`). We then remove `name`, `dob`, and `race` because `name` is irrelevant to recidivism, `dob` is covered by the included `age` category, and `race` is not fair to include in a predictive model as there is no definitive difference aside from visually between two people of different races.<br><br>
+In our data cleaning, we forced date variables to be stored as dates and factor variables to be factors. Then we engineered a few categories in the data - some for convenience and some for purpose. These include the following: `daysInJail` (difference between entry and exit of jail), `logDaysInJail` (log base 10 of `daysInJail`), `logPriorsCount` (log base 10 of `priorsCount`), `juvCount` (total of all juvenile crime categories), and `logJuvCount` (log base 10 of `juvCount`). We then remove `name`, `dob`, and `race` because `name` is irrelevant to recidivism, `dob` is covered by the included `age` category, and `race` is not fair to include in a predictive model as there is no definitive difference aside from visually between two people of different races.<br><br>
 
 # Task 2: Statistical Modeling!
 
-In this section we will be creating three different models based on the data set given and now refined. Our first model will be a logistic model to predict whether or not an inmate will reoffend within two years of their release. Our second model will predict the risk of recidivism score. This score was given by a written test given to prisoners and was computed by a third-party company that uses a black-box algorithm to compute the value of `riskRecidDecileLevel`. Our third model will predict the violence score of an inmate (`riskViolenceDecileScore`. This was once more calculated from a test administered to inmates and was computed by a third-party company using a black-box algorithm.<br>
+In this section we will be creating three different models based on the data set given and now refined. Our first two models will be logistic regression models to predict whether or not an inmate will reoffend within two years of their release both including and excluding the proprietary test scores included in the data. Our third model will predict the risk of recidivism score. This score was given by a written test given to prisoners and was computed by a third-party company that uses a black-box algorithm to compute the value of `riskRecidDecileLevel`. Our fourth model will predict the violence score of an inmate (`riskViolenceDecileScore`. This was once more calculated from a test administered to inmates and was computed by a third-party company using a black-box algorithm.<br>
 
 ## Logistic Regression 1: Predicting Recidivism without Black-Box Predictors in Data
 
-This is our first model. It is a logistic regression model which predicts whether or not an inmate will reoffend within two years of being released. The following plots are some data visualization relevant to this model.
+This is our first model. It is a logistic regression (classification) model which predicts whether or not an inmate will reoffend within two years of being released. The following plots are some data visualization relevant to this model.
 
 ### Relevant Data Visualizations
 
@@ -399,8 +397,8 @@ p14 <- recidTraining %>%
   theme(legend.position = "right") +
   labs(
     title="Age",
-    x = "Age",
-    y = "Recidivated",
+    y = "Age",
+    x = "Recidivated",
     fill = "Recidivated"
   )
 
@@ -414,7 +412,7 @@ Figure 4 shows that age is a factor in whether or not a person will reoffend. Sh
 ```{r fig5}
 ### Sex
 
-ggplot(data=recidTraining,aes(x=fct_infreq(sex), fill=fct_recode(as.factor(isRecid),Yes = "1", No = "0"))) +
+ggplot(data=recidTraining,aes(x=sex, fill=fct_recode(as.factor(isRecid),Yes = "1", No = "0"))) +
   geom_bar(position = "dodge") +
   labs(
     title="Sex",
@@ -431,7 +429,7 @@ Figure 5 takes into account sex as a factor determining reoffending rates. This 
 ```{r fig6}
 ### ChargeDegree
 
-ggplot(data=recidTraining,aes(x=fct_infreq(chargeDegree), fill=fct_recode(as.factor(isRecid),Yes = "1", No = "0"))) +
+ggplot(data=recidTraining,aes(x=chargeDegree, fill=fct_recode(as.factor(isRecid),Yes = "1", No = "0"))) +
   geom_bar(position = "dodge") +
   labs(
     title="Charge Degree",
@@ -640,53 +638,167 @@ testError <- testList6$error
 testPVal <- testList6$pValue
 
 matrix = recid6MatrixTest
-manualErrorValue <- (matrix[1,2]+matrix[2,1])/nrow(recidTesting)
+matrix1 = recid6MatrixTrain
+manualErrorValueTest <- (matrix[1,2]+matrix[2,1])/nrow(recidTesting)
+manualErrorValueTrain <- (matrix1[1,2]+matrix1[2,1])/nrow(recidTraining)
 
 coeffs = recid6Model$coefficients
 
-nullHyp = (matrix[2,1]+matrix[2,2])/nrow(recidTesting)
+nullHyp = (matrix1[2,1]+matrix1[2,2])/nrow(recidTraining)
+
+canWe = ifelse(testPVal > 0.05, "can", "cannot")
+
+continueAnalysis = ifelse(testPVal > 0.05, "should continue analyzing this data and other related data to create a statistically significant model", "should proceed to propose a new hypothesis which we may test in future analysis")
 
 ## Final Model
 
 finalModel <-  recid6Model
+# explain equation, training error, training confusion matrix, explain confusion matrix, same for testing, p-value, null hypothesis
 ```
 
-The model we made from this data to predict whether or not an inmate will reoffend without the use of the proprietary recidivation and violence scores included in the data is as follows:<br>
+The model we made from this data to predict whether or not an inmate will reoffend <b>without</b> the use of the proprietary recidivation and violence scores included in the data is as follows:<br>
 
 $$willReoffend = \lfloor `r coeffs[1]` + `r coeffs[2]` \cdot age + $$
 
 $$`r coeffs[3]` \cdot log_{10}(priorsCount) + `r coeffs[4]` \cdot log_{10}(daysInJail) \rceil$$
 
-The model equation above has a mixed pairing of one floor and one ceiling symbol, this is intended to communicate proper rounding. These model statistics will be based off the testing data set as we only care how well it can predict unknown value, not how well the model we have fits the data it was made from.<br>
+The model equation above has a mixed pairing of one floor and one ceiling symbol, this is intended to communicate proper rounding.
 
-Some model coefficients listed above are a bit obscure in their effect. For example, the coefficients of the logged values indicated that the prediction (ideally between zero and one but rounded) will go up or down according to every power of ten included in the original variable. This is in contrast to the coefficient for the linear term, age, which indicates that the prediciton will go down by 0.03 likelihood to reoffend for every year of age the inmate has.<br>
+In this model we began with every relevant variable (excluding the proprietary scores which we will include in the next model) which could reliably build a model when testing-training splits were made at random (this excluded the categorical variable `chargeDegree` due to its limited number of data points per category and `chargeDesc` as it was too much work to refine and had a very limited number of data points per category). We also chose to exclude `race` and `sex` due to the ethical concerns of including factors which would theoretically have no impact on the model considering equality between races and genders. From our everything model, we ruled out more factors due to their low significance and chose to include the log base 10 of certain variables as justified by the plots included in figures 1-7 where we discussed the log base 10 variants of these variables. After this, we gradually removed one variable at a time until we came to the minimal number of variables that still had a highly accurate prediction which resulted in the model shown above. <br>
+
+Some model coefficients listed above are a bit obscure in their effect. For example, the coefficients of the logged values indicate that the prediction (ideally between zero and one but rounded) will go up or down according to every power of ten included in the original variable. This is in contrast to the coefficient for the linear term, age, which indicates that the prediction will go down by `r abs(coeffs[2])` likelihood to reoffend for every year of age the inmate has.<br>
+
+This model, when demonstrated on the data it was trained on, has a prediction error of $`r trainError`$ meaning that approximately $`r round(trainError*100, 2)`\%$ of the predictions made with this model will either be false positives or false negatives. In this case that means $`r round(trainError*100, 2)`\%$ of inmates will be predicted to reoffend when they do not OR predicted not to reoffend when they do. <br>
+
+This is derived from our confusion matrix which was created upon the testing of this model. Our error rate for those inmates who did not reoffend can be shown as a proportion of the data which was predicted incorrectly as reoffending whereas the error rate for those inmates that did reoffend can be shown as the proportion of the data which was predicted incorrectly as not reoffending.
+$errorPercentage = \frac{`r matrix1[2,1]` + `r matrix1[1,2]`}{`r nrow(recidTraining)`}$.
+Here, the first term in the numerator is the number of people in the data frame that did not reoffend but were predicted to reoffend while the second term in the numerator is the number of people who did reoffend but were predicted as not reoffending. The term in the denominator is the sample size contained within this specific dataframe. This ultimately results in the error value `r manualErrorValueTrain`.<br>
 
 This model, when demonstrated on testing data, has a prediction error of $`r testError`$ meaning that approximately $`r round(testError*100, 2)`\%$ of the predictions made with this model will either be false positives or false negatives. In this case that means $`r round(testError*100, 2)`\%$ of inmates will be predicted to reoffend when they do not OR predicted not to reoffend when they do. <br>
 
 This is derived from our confusion matrix which was created upon the testing of this model. Our error rate for those inmates who did not reoffend can be shown as a proportion of the data which was predicted incorrectly as reoffending whereas the error rate for those inmates that did reoffend can be shown as the proportion of the data which was predicted incorrectly as not reoffending.
 $errorPercentage = \frac{`r matrix[2,1]` + `r matrix[1,2]`}{`r nrow(recidTesting)`}$.
-Here, the first term in the numerator is the number of people in the data frame that did not reoffend but were predicted to reoffend while the second term in the numerator is the number of people who did reoffend but were predicted as not reoffending. The term in the denominator is the sample size contained within this specific dataframe. This ultimately results in the error value `r manualErrorValue`.
+Here, the first term in the numerator is the number of people in the data frame that did not reoffend but were predicted to reoffend while the second term in the numerator is the number of people who did reoffend but were predicted as not reoffending. The term in the denominator is the sample size contained within this specific dataframe. This ultimately results in the error value `r manualErrorValueTest`.<br>
 
-This model's p-value regarding the testing data is $`r testPVal`$. When this value is below 0.05, that means the model fitted to the data is statistically significant as it has a less than $5\%$ chance to occur randomly given random data whereas if it is above 0.05 it is not statistically significant because it has a greater than $5\%$ chance to occur randomly given random data. This p-value was created by a function located at the top of the markdown; however, it was calculated with a one-tail hypothesis test comparing two proportions. The null model states that $`r round(nullHyp*100)`\%$ of inmates will recidivate as this is the percentage of inmates in the data that do recidivate. The alternate hypothesis is that the recidivation rate is something other than this. The two proportions used for this hypothesis test are the error, which is the number of people who were incorrectly predicted over the number of total people, and the p-hat value, which is the total number of people who reoffended in the selected data set over the total number of people in that data set. The standard error used was from a standard calculation of standard error given population size and a single proportion.<br><br>
+This model's p-value regarding the testing data is $`r testPVal`$. When this value is below 0.05, that means the model fitted to the data is statistically significant as it has a less than $5\%$ chance to occur randomly given random data whereas if it is above 0.05 it is not statistically significant because it has a greater than $5\%$ chance to occur randomly given random data. This p-value was created by a function located at the top of the markdown; however, it was calculated with a one-tail hypothesis test comparing two proportions. The null model states that $`r round(nullHyp*100, 2)`\%$ of inmates will reoffend as this is the percentage of inmates in the data that do reoffend. The alternate hypothesis is that the recidivation rate is something other than this. The two proportions used for this hypothesis test are the error, which is the number of people who were incorrectly predicted over the number of total people, and the p-hat value, which is the total number of people who reoffended in the selected data set over the total number of people in that data set. The standard error used was from a standard calculation of standard error given population size and a single proportion. The p-value acquired from this hypothesis test tells us we `r canWe` reject the null hypothesis meaning we `r continueAnalysis`.<br><br>
 
 ## Logistic Regression 2: Predicting Recidivism with Black-Box Predictors in Data
 
-This is our second model. It is a logistic regression model which predicts whether or not an inmate will reoffend within two years of being released, but this time we will be including the black box predictors of `riskRecidDecileLevel` and `riskViolenceDecileScore`. Figures 1-7 are also applicable to this model and figures 8-9 are new plots which visualize the two new variables.
+This is our second model. It is a logistic regression (classification) model which predicts whether or not an inmate will reoffend within two years of being released. This time we are including in our model the black-box scores (`riskRecidDecileScore` and `riskViolenceDecileScore`) which are included in the data and were computed through use of a proprietary algorithm from a third party. The plots made for the prior model are all still relevant in this case. The following plot is an addition to the prior grouping which incorporate our new relevant predictor, `riskRecidDecileScore`.<br>
 
 ### Relevant Data Visualizations
 
 #### Figure 8
 
-```{r}
-
+```{r fig8}
+### Risk Recid Score
+recidTraining %>% 
+  jjplotDensity(x = riskRecidDecileScore, fill = fct_recode(as.factor(isRecid),Yes = "1", No = "0")) +
+  labs(
+    title="Risk Recidivation Score Accuracy in Predicting Recidivation",
+    fill = "Recidivated",
+    x = "Risk Recidivation Score"
+  ) +
+  theme_update(legend.position = "right")
 ```
 
-
-
-#### Figure 9
-
-```{r}
-
-```
+Figure 8 compares `riskRecidDecileScore` with the actual recidivation value of the inmate which makes for a nice accuracy comparison. We see in this plot what we would expect: as the recidivation score goes up, the proportion of inmates who reoffend increases in relation to the inmates who do not. This holds true until a recidivation score of roughly 8.0 where both progress downward. This is likely due to less data existing at this extreme; however, it could simply indicate that the model included in the data for `riskRecidDecileScore` does not accurately predict recidivation in the upper values of their 10 point scale.
 
 ### The Model
+
+```{r logisticModel2}
+riskModel <- glm(isRecid ~ age + logPriorsCount + logDaysInJail + riskRecidDecileScore + riskViolenceDecileScore, data=recidTraining, family = binomial)
+#summary(riskModel)
+
+riskModel2 <- glm(isRecid ~ age + logPriorsCount + logDaysInJail + riskRecidDecileScore, data=recidTraining, family = binomial)
+#summary(riskModel2)
+
+riskModel3 <- glm(isRecid ~ age + logPriorsCount + riskRecidDecileScore, data=recidTraining, family = binomial)
+#summary(riskModel2)
+
+riskPredictTrain <- getPredict(recidTraining, riskModel3) %>% 
+  mutate(prediction = ifelse(recidPredict < 0.5, "Did Not Reaffend", "Reaffended"))
+riskMatrixTrain <- table(riskPredictTrain$isRecid,riskPredictTrain$prediction)
+
+riskPredictTest <- getPredict(recidTesting, riskModel3) %>% 
+  mutate(prediction = ifelse(recidPredict < 0.5, "Did Not Reaffend", "Reaffended"))
+riskMatrixTest <- table(riskPredictTest$isRecid,riskPredictTest$prediction)
+
+#(checkModel(recidTraining,riskMatrixTrain))
+
+#(checkModel(recidTesting,riskMatrixTest))
+
+#stored for use in markdown
+trainList <- checkModel(recidTraining,riskMatrixTrain)
+trainError <- trainList$error
+trainPVal <- trainList$pValue
+
+testList <- checkModel(recidTesting,riskMatrixTest)
+testError <- testList$error
+testPVal <- testList$pValue
+
+matrix = recid6MatrixTest
+matrix1 = recid6MatrixTrain
+manualErrorValueTest <- (matrix[1,2]+matrix[2,1])/nrow(recidTesting)
+manualErrorValueTrain <- (matrix1[1,2]+matrix1[2,1])/nrow(recidTraining)
+
+coeffs = recid6Model$coefficients
+
+nullHyp = (matrix[2,1]+matrix[2,2])/nrow(recidTesting)
+
+canWe = ifelse(testPVal > 0.05, "can", "cannot")
+
+continueAnalysis = ifelse(testPVal > 0.05, "should continue analyzing this data and other related data to create a statistically significant model", "should proceed to propose a new hypothesis which we may test in future analysis")
+
+## Final Model
+
+finalModel <-  riskModel3
+```
+
+The model we made from this data to predict whether or not an inmate will reoffend <b>with</b> the use of the proprietary recidivation and violence scores included in the data is as follows:<br>
+
+$$willReoffend = \lfloor `r coeffs[1]` + `r coeffs[2]` \cdot age +$$
+$$`r coeffs[3]` \cdot logPriorsCount + `r coeffs[4]` \cdot riskRecidDecileScore$$
+
+The model equation above has a mixed pairing of one floor and one ceiling symbol, this is intended to communicate proper rounding. 
+
+In this model we began the variables that ultimately were relevant to our last model but now with the added proprietary score variables `riskRecidDecileScore` and `riskViolenceDecileScore`. We still chose to exclude `race` and `sex` due to the ethical concerns of including factors which would theoretically have no impact on the model considering equality between races and genders. We ended up refining out the violence score and were left with the model above. This was the best model which still included one of the proprietary scores. <br>
+
+Some model coefficients listed above are obscure in their effect. For example, the coefficients of the logged values indicate that the prediction will go up or down according to every power of ten included in the original variable's value. This is in contrast to the coefficient for the included linear term, age, which indicates that the prediction will change by `r coeffs[2]` likelihood to reoffend for every year of age the inmate has.<br>
+
+This model, when demonstrated on the data it was trained on, has a prediction error of $`r trainError`$ meaning that approximately $`r round(trainError*100, 2)`\%$ of the predictions made with this model will either be false positives or false negatives. In this case that means $`r round(trainError*100, 2)`\%$ of inmates will be predicted to reoffend when they do not or will be predicted not to reoffend when they do. <br>
+
+This is information which can be found in our confusion matrix which was created upon the testing of this model. Our error rate for those inmates who did not reoffend can be shown as a proportion of the data which was predicted incorrectly as reoffending whereas the error rate for those inmates that did reoffend can be shown as the proportion of the data which was predicted incorrectly as not reoffending. The combination of these two numbers over the total number of data points gives us our error measurement.
+$errorPercentage = \frac{`r matrix1[2,1]` + `r matrix1[1,2]`}{`r nrow(recidTraining)`}$.
+Here, the first term in the numerator is the number of people in the data frame that did not reoffend but were predicted to reoffend while the second term in the numerator is the number of people who did reoffend but were predicted as not reoffending. The term in the denominator is the sample size contained within this specific dataframe. This ultimately results in the error value `r manualErrorValueTrain`.<br>
+
+This model, when demonstrated on testing data, has a prediction error of $`r testError`$ meaning that approximately $`r round(testError*100, 2)`\%$ of the predictions made with this model will either be false positives or false negatives. In this case that means $`r round(testError*100, 2)`\%$ of inmates will be predicted to reoffend when they do not OR predicted not to reoffend when they do. <br>
+
+This is derived from our confusion matrix which was created upon the testing of this model. Our error rate for those inmates who did not reoffend can be shown as a proportion of the data which was predicted incorrectly as reoffending whereas the error rate for those inmates that did reoffend can be shown as the proportion of the data which was predicted incorrectly as not reoffending.
+$errorPercentage = \frac{`r matrix[2,1]` + `r matrix[1,2]`}{`r nrow(recidTesting)`}$.
+Here, the first term in the numerator is the number of people in the data frame that did not reoffend but were predicted to reoffend while the second term in the numerator is the number of people who did reoffend but were predicted as not reoffending. The term in the denominator is the sample size contained within this specific dataframe. This ultimately results in the error value `r manualErrorValueTest`.<br>
+
+This model's p-value regarding the testing data is $`r testPVal`$. When this value is below 0.05, that means the model fitted to the data is statistically significant as it has a less than $5\%$ chance to occur randomly given random data whereas if it is above 0.05 it is not statistically significant because it has a greater than $5\%$ chance to occur randomly given random data. This p-value was created by a function located at the top of the markdown; however, it was calculated with a one-tail hypothesis test comparing two proportions. The null model states that $`r round(nullHyp*100, 2)`\%$ of inmates will reoffend as this is the percentage of inmates in the data that do reoffend. The alternate hypothesis is that the recidivation rate is something other than this. The two proportions used for this hypothesis test are the error, which is the number of people who were incorrectly predicted over the number of total people, and the p-hat value, which is the total number of people who reoffended in the selected data set over the total number of people in that data set. The standard error used was from a standard calculation of standard error given population size and a single proportion. The p-value acquired from this hypothesis test tells us we `r canWe` reject the null hypothesis meaning we `r continueAnalysis`.<br>
+
+This model was actually worse than the last model we made. This means that the proprietary scores are not good predictors of recidivism in the context of this data and it is better to disregard them and make a model which is entirely our own to predict this.<br><br>
+
+## Multiple Regression 1: Predicting Risk of Recidivism Decile Score
+
+This is our third model. This model is a multiple regression model attempting to achieve parity with the algorithm which was used to calculate `riskRecidDecileScore`. 
+
+### Relevant Data Visualizations
+
+### The Model
+
+## Multiple Regression 2: Predicting Risk of Violence Decile Score
+
+### Relevant Data Visualizations
+
+### The Model
+
+## Predicting on NEW! Data
+# Task 3: Split Over Two Sub-Populations
+# Task 4: Another Story in Data Science Regarding Criminal Justice
+# Ethical Implications of Classification Models in the Criminal Justice System
+# Conclusion
+# References
