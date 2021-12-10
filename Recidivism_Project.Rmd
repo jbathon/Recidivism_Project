@@ -22,6 +22,8 @@ library(tidyverse)
 library(lubridate)
 # Put multiple plots into one figure in... creative ways...
 library(patchwork)
+# library necessary for autoplotting models
+library(ggfortify)
 
 # font stuffs ensure version 1.3.8 for Rttf2pt1
 library(Rttf2pt1)
@@ -236,13 +238,21 @@ recid4 <- recid3 %>%
     -race
   )
 
-## Testing Training Split
+## Testing Training Split for Logistic Models
 
 testingTraining <- createTraining(recid4, seed=8675309)
 
 recidTraining <- testingTraining$training
 
 recidTesting <-  testingTraining$testing
+
+## Testing Training Split for Multiple Regression Models
+
+testingTraining2 <- createTraining(recid3, seed = 859)
+
+recidTraining2 <- testingTraining2$training
+
+recidTesting2 <- testingTraining2$testing
 ```
 
 In our data cleaning, we forced date variables to be stored as dates and factor variables to be factors. Then we engineered a few categories in the data - some for convenience and some for purpose. These include the following: `daysInJail` (difference between entry and exit of jail), `logDaysInJail` (log base 10 of `daysInJail`), `logPriorsCount` (log base 10 of `priorsCount`), `juvCount` (total of all juvenile crime categories), and `logJuvCount` (log base 10 of `juvCount`). We then remove `name`, `dob`, and `race` because `name` is irrelevant to recidivism, `dob` is covered by the included `age` category, and `race` is not fair to include in a predictive model as there is no definitive difference aside from visually between two people of different races.<br><br>
@@ -389,7 +399,7 @@ p13 <- recidTraining %>%
   jjplotDensity(x = age, fill = as.factor(isRecid), color = as.factor(isRecid)) +
   labs(
     title="Age",
-    x = "Juvenile Priors Counts"
+    x = "Age"
   )
 
 p14 <- recidTraining %>% 
@@ -699,7 +709,7 @@ recidTraining %>%
     fill = "Recidivated",
     x = "Risk Recidivation Score"
   ) +
-  theme_update(legend.position = "right")
+  theme_custom()
 ```
 
 Figure 8 compares `riskRecidDecileScore` with the actual recidivation value of the inmate which makes for a nice accuracy comparison. We see in this plot what we would expect: as the recidivation score goes up, the proportion of inmates who reoffend increases in relation to the inmates who do not. This holds true until a recidivation score of roughly 8.0 where both progress downward. This is likely due to less data existing at this extreme; however, it could simply indicate that the model included in the data for `riskRecidDecileScore` does not accurately predict recidivation in the upper values of their 10 point scale.
@@ -784,11 +794,140 @@ This model was actually worse than the last model we made. This means that the p
 
 ## Multiple Regression 1: Predicting Risk of Recidivism Decile Score
 
-This is our third model. This model is a multiple regression model attempting to achieve parity with the algorithm which was used to calculate `riskRecidDecileScore`. 
+This is our third model. This model is a multiple regression model attempting to achieve parity with the algorithm which was used to calculate `riskRecidDecileScore`. The following plots are some data visualization.
 
 ### Relevant Data Visualizations
 
+#### Figure 9
+
+```{r}
+p18 <- ggplot(data = recidTraining2, aes(x = daysInJail, y = riskRecidDecileScore, fill = recidCat)) +
+  geom_boxplot() +
+  labs(
+    x = "Days in Jail",
+    y = "Risk Recidivate Score",
+    fill = "Recidivated?"
+  ) +
+  coord_flip()
+
+
+p19 <- ggplot(data = recidTraining2, aes(x = daysInJail, y = riskRecidDecileScore, fill = recidCat)) +
+  geom_boxplot() +
+  labs(
+    x = "log10(Days in Jail)",
+    y = "Risk Recidivate Score",
+    fill = "Recidivated?"
+  ) +
+  coord_flip()
+
+p18 / p19 + plot_annotation(title = "Days in Jail") + plot_layout(guides = "collect")
+```
+
+#### Figure 10
+
+```{r}
+## Juvenile Count vs riskRecidDecileScore
+
+p20 <- ggplot(data = recidTraining2, aes(x = juvCount, y = riskRecidDecileScore, fill = recidCat)) +
+  geom_boxplot() +
+  labs(
+    x = "Juvenile Count",
+    y = "Risk Recidivate Score",
+    fill = "Recidivated?"
+  ) +
+  coord_flip()
+
+
+p21 <- ggplot(data = recidTraining2, aes(x = logJuvCount, y = riskRecidDecileScore, fill = recidCat)) +
+  geom_boxplot() +
+  labs(
+    x = "log10(Juvenile Count + 0.01)",
+    y = "Risk Recidivate Score",
+    fill = "Recidivated?"
+  ) +
+  coord_flip()
+
+p20 / p21 + plot_annotation(title = "Juvenile Count") + plot_layout(guides = "collect")
+```
+
+#### Figure 11
+
+```{r}
+## Priors Count vs riskRecidDecileScore
+
+p22 <- ggplot(data = recidTraining2, aes(x = priorsCount, y = riskRecidDecileScore, fill = recidCat)) +
+  geom_boxplot() +
+  labs(
+    x = "Priors Count",
+    y = "Risk Recidivate Score",
+    fill = "Recidivated?"
+  ) +
+  coord_flip()
+
+
+p23 <- ggplot(data = recidTraining2, aes(x = logPriorsCount, y = riskRecidDecileScore, fill = recidCat)) +
+  geom_boxplot() +
+  labs(
+    x = "log10(Priors Count + 0.01)",
+    y = "Risk Recidivate Score",
+    fill = "Recidivated?"
+  ) +
+  coord_flip()
+
+p22 / p23 + plot_annotation(title = "Priors Count") + plot_layout(guides = "collect")
+```
+
+#### Figure 12
+
+```{r}
+## Age vs riskRecidDecileScore
+
+ggplot(data = recidTraining2, aes(x = age, y = riskRecidDecileScore, fill = recidCat)) +
+  geom_boxplot() +
+  labs(
+    x = "Age",
+    y = "Risk Recidivate Score",
+    fill = "Recidivated?",
+    title = "Age"
+  ) +
+  coord_flip()
+```
+
+#### Figure 13
+
+```{r}
+## Age Cat vs riskRecidDecileScore
+ggplot(data = recidTraining2, aes(riskRecidDecileScore, fill = recidCat)) +
+  geom_density(alpha = .4) +
+  facet_wrap(~ageCat)
+```
+
+#### Figure 14
+
+```{r}
+## Race vs riskRecidDecileScore
+
+ggplot(data = recidTraining2, aes(riskRecidDecileScore, fill = recidCat)) +
+  geom_density(alpha = .4) +
+  facet_wrap(~race)
+```
+
+#### Figure 15
+
+```{r}
+## Charge Degree vs riskRecidDecileScore
+
+ggplot(data = recidTraining2, aes(riskRecidDecileScore, fill = recidCat)) +
+  geom_density(alpha = .4) +
+  facet_wrap(~chargeDegree)
+```
+
 ### The Model
+
+```{r}
+
+```
+
 
 ## Multiple Regression 2: Predicting Risk of Violence Decile Score
 
@@ -798,7 +937,7 @@ This is our third model. This model is a multiple regression model attempting to
 
 ## Predicting on NEW! Data
 # Task 3: Split Over Two Sub-Populations
-# Task 4: Another Story in Data Science Regarding Criminal Justice
+# Task 4: Another Story in Data Science Regarding Criminal Justice: Predicting Jail Time!
 # Ethical Implications of Classification Models in the Criminal Justice System
 # Conclusion
 # References
