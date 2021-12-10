@@ -230,13 +230,21 @@ recid4 <- recid3 %>%
     -race
   )
 
-## Testing Training Split
+## Testing Training Split for First Logistic Regression Model
 
 testingTraining <- createTraining(recid4, seed=8675309)
 
 recidTraining <- testingTraining$training
 
 recidTesting <-  testingTraining$testing
+
+## Testing Training Split for Second Logistic Regression Model
+
+testingTraining2 <- createTraining(recid3, seed="859")
+
+recidTraining2 <- testingTraining2$training
+
+recidTesting2 <-  testingTraining2$testing
 ```
 
 In our data cleaning, we forced date variables to be dates and factor variables to be factors. Then we engineered a few categories in the data - some for convenience and some for purpose. These include the following: `daysInJail` (difference between entry and exit of jail), `logDaysInJail` (log base 10 of `daysInJail`), `logPriorsCount` (log base 10 of `priorsCount`), `juvCount` (total of all juvenile crime categories), and `logJuvCount` (log base 10 of `juvCount`). We then remove `name`, `dob`, and `race` because `name` is irrelevant to recidivism, `dob` is covered by the included `age` category, and `race` is not fair to include in a predictive model as there is no definitive difference aside from visually between two people of different races.<br><br>
@@ -669,6 +677,16 @@ This is our second model. It is a logistic regression model which predicts wheth
 
 #### Figure 8
 
+```{r}
+
+```
+
 
 
 #### Figure 9
+
+```{r}
+
+```
+
+### The Model
