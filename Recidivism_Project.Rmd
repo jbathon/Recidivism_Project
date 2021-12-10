@@ -1,5 +1,5 @@
 ---
-title: "Recidvism Project"
+title: "Recidivism Project"
 author: "J & J (Bathon and Grosse)"
 date: "12/2/2021"
 output: 
@@ -24,6 +24,8 @@ library(lubridate)
 library(patchwork)
 # library necessary for autoplotting models
 library(ggfortify)
+# for refining models
+library(olsrr)
 
 # font stuffs ensure version 1.3.8 for Rttf2pt1
 library(Rttf2pt1)
@@ -193,7 +195,7 @@ This task revolves around visualizing the data and making the data we are given 
 
 ```{r dataWork}
 ## Data Cleaning
-recid2 <- recid %>% 
+recid2 <- recid %>%
   rename(
     dayBefScreenArrest = days_b_screening_arrest,
     jailIn = c_jail_in,
@@ -206,35 +208,38 @@ recid2 <- recid %>%
     riskRecidScreeningDate = RiskRecidScreeningDate,
     riskViolenceDecileScore = RiskViolenceDecileScore,
     riskViolenceScoreLevel = RiskViolenceScoreLevel
-  ) %>% 
+  ) %>%
   mutate(
     dob = as_date(dmy(dob)),
-    ageCat = as.factor(ageCat),
-    race = as.factor(race),
+    ageCat = factor(as.factor(ageCat), levels = c("Less than 25", "25 - 45", "Greater than 45")),
+    race = factor(as.factor(race), levels = c("white", "black", "hispanic", "other")),
     jailIn = as.Date(dmy_hm(jailIn, tz = "EST")),
     jailOut = as.Date(dmy_hm(jailOut, tz = "EST")),
-    chargeDegree = as.factor(gsub("[()]","",chargeDegree)),
+    chargeDegree = as.factor(gsub("[()]", "", chargeDegree)),
     riskRecidScoreLevel = as.factor(riskRecidScoreLevel),
-    riskRecidScreeningDate = as_date(dmy(riskRecidScreeningDate))
-    )
+    riskRecidScreeningDate = as_date(dmy(riskRecidScreeningDate)),
+    recidCat = fct_recode(as.factor(isRecid), Yes = "1", No = "0")
+  ) %>%
+  select(-name, -dob) %>%
+  filter(!is.na(isRecid) & (!is.na(jailIn) | !is.na(jailOut)))
 
 ## Data Engineering
 
-recid3 <- recid2 %>% 
+recid3 <- recid2 %>%
   mutate(
-    daysInJail = as.numeric(difftime(jailOut,jailIn,unit="days")+1),
+    daysInJail = as.numeric(difftime(jailOut, jailIn, unit = "days") + 1),
     logDaysInJail = log10(daysInJail),
-    logPriorsCount = log10(priorsCount+0.1),
+    logPriorsCount = log10(priorsCount + 0.1),
+    chargeDescCount = str_count(chargeDesc),
+    logChargeDescCount = log10(chargeDescCount+0.1),
     juvCount = juvFelonyCount + juvMisdemeanerCount + juvOtherCount,
-    logJuvCount = log10(juvCount+0.1)
+    logJuvCount = log10(juvCount + 0.1)
   )
 
-## Data Removal
+# Category Removal
 
-recid4 <- recid3 %>% 
-  select (
-    -name,
-    -dob,
+recid4 <- recid3 %>%
+  select(
     -race
   )
 
@@ -768,7 +773,7 @@ finalModel <-  riskModel3
 The model we made from this data to predict whether or not an inmate will reoffend <b>with</b> the use of the proprietary recidivation and violence scores included in the data is as follows:<br>
 
 $$willReoffend = \lfloor `r coeffs[1]` + `r coeffs[2]` \cdot age +$$
-$$`r coeffs[3]` \cdot logPriorsCount + `r coeffs[4]` \cdot riskRecidDecileScore$$
+$$`r coeffs[3]` \cdot logPriorsCount + `r coeffs[4]` \cdot riskRecidDecileScore \rceil$$
 
 The model equation above has a mixed pairing of one floor and one ceiling symbol, this is intended to communicate proper rounding. 
 
@@ -800,134 +805,104 @@ This is our third model. This model is a multiple regression model attempting to
 
 #### Figure 9
 
-```{r}
-p18 <- ggplot(data = recidTraining2, aes(x = daysInJail, y = riskRecidDecileScore, fill = recidCat)) +
-  geom_boxplot() +
-  labs(
-    x = "Days in Jail",
-    y = "Risk Recidivate Score",
-    fill = "Recidivated?"
-  ) +
-  coord_flip()
-
-
-p19 <- ggplot(data = recidTraining2, aes(x = daysInJail, y = riskRecidDecileScore, fill = recidCat)) +
-  geom_boxplot() +
-  labs(
-    x = "log10(Days in Jail)",
-    y = "Risk Recidivate Score",
-    fill = "Recidivated?"
-  ) +
-  coord_flip()
-
-p18 / p19 + plot_annotation(title = "Days in Jail") + plot_layout(guides = "collect")
-```
-
-#### Figure 10
-
-```{r}
-## Juvenile Count vs riskRecidDecileScore
-
-p20 <- ggplot(data = recidTraining2, aes(x = juvCount, y = riskRecidDecileScore, fill = recidCat)) +
-  geom_boxplot() +
-  labs(
-    x = "Juvenile Count",
-    y = "Risk Recidivate Score",
-    fill = "Recidivated?"
-  ) +
-  coord_flip()
-
-
-p21 <- ggplot(data = recidTraining2, aes(x = logJuvCount, y = riskRecidDecileScore, fill = recidCat)) +
-  geom_boxplot() +
-  labs(
-    x = "log10(Juvenile Count + 0.01)",
-    y = "Risk Recidivate Score",
-    fill = "Recidivated?"
-  ) +
-  coord_flip()
-
-p20 / p21 + plot_annotation(title = "Juvenile Count") + plot_layout(guides = "collect")
-```
-
-#### Figure 11
-
-```{r}
-## Priors Count vs riskRecidDecileScore
-
-p22 <- ggplot(data = recidTraining2, aes(x = priorsCount, y = riskRecidDecileScore, fill = recidCat)) +
-  geom_boxplot() +
-  labs(
-    x = "Priors Count",
-    y = "Risk Recidivate Score",
-    fill = "Recidivated?"
-  ) +
-  coord_flip()
-
-
-p23 <- ggplot(data = recidTraining2, aes(x = logPriorsCount, y = riskRecidDecileScore, fill = recidCat)) +
-  geom_boxplot() +
-  labs(
-    x = "log10(Priors Count + 0.01)",
-    y = "Risk Recidivate Score",
-    fill = "Recidivated?"
-  ) +
-  coord_flip()
-
-p22 / p23 + plot_annotation(title = "Priors Count") + plot_layout(guides = "collect")
-```
-
-#### Figure 12
-
-```{r}
-## Age vs riskRecidDecileScore
-
-ggplot(data = recidTraining2, aes(x = age, y = riskRecidDecileScore, fill = recidCat)) +
-  geom_boxplot() +
-  labs(
-    x = "Age",
-    y = "Risk Recidivate Score",
-    fill = "Recidivated?",
-    title = "Age"
-  ) +
-  coord_flip()
-```
-
-#### Figure 13
-
-```{r}
+```{r fig9}
 ## Age Cat vs riskRecidDecileScore
 ggplot(data = recidTraining2, aes(riskRecidDecileScore, fill = recidCat)) +
   geom_density(alpha = .4) +
-  facet_wrap(~ageCat)
+  facet_wrap(~ageCat)+
+  labs(
+    x = "Risk of Recidivation (Decile Score)",
+    fill = "Recidivated",
+    title = "Recidivation Decile Score Distribution by Age Category"
+  ) +
+  theme_custom()
 ```
 
-#### Figure 14
+Figure 9 shows the relationship between an inmate's age category and their `riskRecidDecileScore`. The plot shows that the recidivation decile score predicts the least accurately in people greater than 45 years old as the blue and red fields should cross at exactly five for perfect accuracy whereas they do not intersect at this point in the age category of 45 or older. The other columns behave properly and as expected. This will be included in our initial model to potentially ruled out later.<br>
 
-```{r}
+#### Figure 10
+
+```{r fig10}
 ## Race vs riskRecidDecileScore
 
 ggplot(data = recidTraining2, aes(riskRecidDecileScore, fill = recidCat)) +
   geom_density(alpha = .4) +
-  facet_wrap(~race)
+  facet_wrap(~race)+
+  labs(
+    x = "Risk of Recidivation (Decile Score)",
+    fill = "Recidivated",
+    title = "Recidivation Decile Score by Race"
+  ) +
+  theme_custom()
 ```
 
-#### Figure 15
+Figure 10 shows the relationship between an inmate's race and their `riskRecidDecileScore`. The plot shows that there is a heavy prediction bias for black inmates. This is a very concerning trend. Because we are trying to predict as closely as possible to the proprietary scores included, we will include race in our final model; however, this is not an ethical means of classifying or scoring individuals.
 
-```{r}
+#### Figure 11
+
+```{r fig11}
 ## Charge Degree vs riskRecidDecileScore
 
 ggplot(data = recidTraining2, aes(riskRecidDecileScore, fill = recidCat)) +
   geom_density(alpha = .4) +
-  facet_wrap(~chargeDegree)
+  facet_wrap(~chargeDegree)+
+  labs(
+    x = "Risk of Recidivation (Decile Score)",
+    fill = "Recidivated",
+    title = "Recidivation Decile Score by Charge Degree"
+  ) +
+  theme_custom()
 ```
+
+Figure 11 shows the relationship between the degree of an inmate's criminal charge and their `riskRecidDecileScore`. This figure shows that there are very different relationships between each charge score and the accuracy of the `riskRecidDecileScore`. This indicates that `chargeDegree` is likely an indicator used in the proprietary model and as such we will include it in our model to potentially be refined out later.
 
 ### The Model
 
-```{r}
+```{r multipleRegression1}
+scoreSubsetModel <- lm(riskRecidDecileScore ~ logPriorsCount + priorsCount + age + chargeDegree + logDaysInJail + daysInJail + sex + race, data = recidTraining2)
 
+olsSubset <- ols_step_best_subset(scoreSubsetModel)
+
+scoreFinalModel <- lm(riskRecidDecileScore ~ priorsCount + age + chargeDegree + logDaysInJail + race, data = recidTraining2)
+
+scoreTrainingPredicts <- predict.lm(scoreFinalModel, newdata = recidTraining2)
+
+scoreTestingPredicts <- predict.lm(scoreFinalModel, newdata = recidTesting2)
+
+coeffs = scoreFinalModel$coefficients
+
+trainRMSE <- RMSE(scoreTrainingPredicts, recidTraining2$riskRecidDecileScore)
+
+rmse <- RMSE(scoreTestingPredicts, recidTesting2$riskRecidDecileScore)
+
+corr = cor(scoreTestingPredicts, recidTesting2$riskRecidDecileScore)
 ```
 
+#### Overview
+
+The model given our training data to predict `riskRecidDecileScore` is as follows:
+
+$$predictedRecidDecileScore = `r coeffs[1]` + `r coeffs[2]` \cdot priorsCount + `r coeffs[3]` \cdot age +$$
+$$`r coeffs[4]` \cdot chargeDeg_{F2} + `r coeffs[5]` \cdot chargeDeg_{F3} + `r coeffs[6]` \cdot chargeDeg_{F5} +$$
+$$`r coeffs[7]` \cdot chargeDeg_{F7} + `r coeffs[8]` \cdot chargeDeg_{M1} + `r coeffs[9]` \cdot chargeDeg_{M2} +$$
+$$`r coeffs[10]` \cdot chargeDeg_{MO3} + `r coeffs[11]` \cdot chargeDeg_{NI0} + `r coeffs[12]` \cdot logDaysInJail +$$
+$$`r coeffs[13]` \cdot race_{black} + `r coeffs[14]` \cdot race_{hispanic} + `r coeffs[15]` \cdot race_{other *non-white*}$$
+As can be seen, this model has some interesting components. Firstly, the last component is intended to include any race which is not black, hispanic, or white. White was not included in the model meaning that an inmate being white does not affect their recidivism prediction. This does not however mean that we can lump them in with the "other" category. Next, chargeDeg is intended to represent the `chargeDegree` variable. Most of these components are simply linear, meaning that being part of a specific category or having one extra increment in those variables such as `chargeDegree` or `priorsCount` respectively will directly add that value to your recidivation score. The `logDaysInJail` category on the other hand will add `r coeffs[12]` to your recidivation score for every factor of 10 that is included in the standard version of the variable, `daysInJail`.<br>
+
+#### Diagnostic Plots
+
+```{r mRegModel1Autoplot}
+autoplot(scoreFinalModel)[1:2] + theme_custom()
+```
+
+As can be seen in our diagnostic plots. This model is borderline acceptable, but not very good. The residual plot shows a $-x^3$ pattern meaning there is likely some other factor explaining part of this data. We could not find this factor in the included data. The Q-Q plot shows that this model is fairly reliable unless we are predicting in the lower recidivation score range. From this, we can determine that this data shouldn't be modeled in this way or is more likely missing a significant predictor to be completely accurate as this model is the best model which could be made that we found within this data.<br>
+
+Correlation Coefficient $= `r corr`$
+A correlation coefficient of $`r corr`$ indicates that $`r round(corr*100,2)`\%$ of the variation in recidivation score is explained by the model. The closer this is to $1$ or $-1$, the better the model fits the data provided and, therefore, the more likely it is to be effective at predicting recidivation score. A value of `r corr` is not great, but would indicate that this model can predict recidivation score at the very least within an appropriate range of the actual value. We would need more effective indicators included in the inmate data in order to properly model this data with a higher correlation value.
+
+In relation to our training data, this model has an RMSE of `r trainRMSE`. This means that our predictions have a residual mean square error of `r trainRMSE` on a 10 point scale. An average of `r round(trainRMSE,1)` points of error on the training data is quite bad. Let's move onto the testing RMSE.<br>
+
+In relation to our testing data, this model has an RMSE of `r rmse`. This means that our predictions have a residual mean square error of `r rmse` on a 10 point scale. An average of `r round(rmse,1)` points of error is not horrible, but it isn't great either. The testing and training RMSE values don't differ greatly which indicates that there are predictors missing from this data which are useful in predicting this value. Sadly we did not find a better model for this score which indicates that the model from the proprietary provider likely involved some information which was not included in this data.<br><br>
 
 ## Multiple Regression 2: Predicting Risk of Violence Decile Score
 
